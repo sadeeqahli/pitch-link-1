@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { 
   DEFAULT_PRICING, 
@@ -33,6 +34,9 @@ export const useSubscriptionStore = create((set, get) => ({
   // Loading states
   isLoadingSubscription: false,
   isLoadingPayment: false,
+  
+  // UI states
+  isPaywallVisible: false,
   
   // Pricing configuration
   pricing: DEFAULT_PRICING,
@@ -402,6 +406,25 @@ export const useSubscriptionStore = create((set, get) => ({
       });
       return false;
     }
+  },
+  
+  // Paywall methods
+  showPaywall: () => {
+    set({ isPaywallVisible: true });
+  },
+  
+  hidePaywall: () => {
+    set({ isPaywallVisible: false });
+  },
+  
+  // Subscription status methods
+  loadSubscriptionStatus: async () => {
+    const { initialize } = get();
+    await initialize();
+  },
+  
+  get isSubscribed() {
+    return get().isPremium;
   },
 }));
 

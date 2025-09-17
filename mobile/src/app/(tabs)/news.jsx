@@ -12,7 +12,7 @@ import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   TrendingUp,
   Clock,
@@ -21,6 +21,10 @@ import {
   Users,
   Trophy,
   Calendar,
+  Crown,
+  Star,
+  Lock,
+  Search,
 } from "lucide-react-native";
 import {
   useFonts,
@@ -29,6 +33,12 @@ import {
   Inter_600SemiBold,
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
+import { useSubscriptionStore } from "@/utils/subscription/store";
+import { useContentStore } from "@/utils/content/contentStore";
+import SubscriptionHeader from "@/components/SubscriptionHeader";
+import PaywallModal from "@/components/PaywallModal";
+import LiveStreamPlayer from "@/components/LiveStreamPlayer";
+import EnhancedSearch from "@/components/EnhancedSearch";
 
 export default function NewsScreen() {
   const insets = useSafeAreaInsets();
@@ -36,6 +46,28 @@ export default function NewsScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   const [refreshing, setRefreshing] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [selectedLiveMatch, setSelectedLiveMatch] = useState(null);
+  
+  // Premium subscription hooks
+  const { 
+    isSubscribed, 
+    subscriptionStatus,
+    loadSubscriptionStatus,
+    showPaywall,
+    hidePaywall,
+    isPaywallVisible 
+  } = useSubscriptionStore();
+  
+  // Content management hooks
+  const {
+    articles,
+    liveMatches,
+    loadContent,
+    getPersonalizedContent,
+    getFreeContent,
+    getPremiumContent
+  } = useContentStore();
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -44,16 +76,43 @@ export default function NewsScreen() {
     Inter_700Bold,
   });
 
+  // Load subscription status and content on mount
+  useEffect(() => {
+    const initializeContent = async () => {
+      await loadSubscriptionStatus();
+      await loadContent();
+    };
+    initializeContent();
+  }, []);
+
   if (!fontsLoaded) {
     return null;
   }
 
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-      Alert.alert("Updated", "News feed has been refreshed!");
-    }, 2000);
+    await loadContent();
+    setRefreshing(false);
+  };
+
+  // Get content based on subscription status
+  const displayContent = isSubscribed ? getPersonalizedContent() : getFreeContent();
+  const premiumContent = getPremiumContent();
+
+  const handlePremiumContentPress = (article) => {
+    if (isSubscribed) {
+      handleNewsPress(article);
+    } else {
+      showPaywall();
+    }
+  };
+
+  const handleLiveStreamPress = (match) => {
+    if (isSubscribed) {
+      setSelectedLiveMatch(match);
+    } else {
+      showPaywall();
+    }
   };
 
   const handleFixturesPress = () => {
@@ -67,7 +126,11 @@ export default function NewsScreen() {
   const handleNewsPress = (article) => {
     Alert.alert(
       article.title,
-      `Category: ${article.category}\n\n${article.summary}\n\nWould you like to read the full article?`,
+      `Category: ${article.category}
+
+${article.summary}
+
+Would you like to read the full article?`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -485,10 +548,13 @@ export default function NewsScreen() {
     <View style={{ flex: 1, backgroundColor: isDark ? "#0A0A0A" : "#F8F9FA" }}>
       <StatusBar style={isDark ? "light" : "dark"} />
 
+      {/* Subscription Header */}
+      <SubscriptionHeader />
+
       {/* Header */}
       <View
         style={{
-          paddingTop: insets.top + 16,
+          paddingTop: 16,
           paddingHorizontal: 20,
           paddingBottom: 20,
           backgroundColor: isDark ? "#0A0A0A" : "#F8F9FA",
@@ -498,20 +564,67 @@ export default function NewsScreen() {
           style={{
             flexDirection: "row",
             alignItems: "center",
+            justifyContent: "space-between",
             marginBottom: 8,
           }}
         >
-          <TrendingUp size={24} color="#00FF88" />
-          <Text
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <TrendingUp size={24} color="#00FF88" />
+            <Text
+              style={{
+                marginLeft: 8,
+                fontSize: 28,
+                fontFamily: "Inter_700Bold",
+                color: isDark ? "#FFFFFF" : "#000000",
+              }}
+            >
+              Football News
+            </Text>
+            {isSubscribed && (
+              <View
+                style={{
+                  marginLeft: 8,
+                  backgroundColor: "#00FF8820",
+                  paddingHorizontal: 8,
+                  paddingVertical: 4,
+                  borderRadius: 8,
+                  flexDirection: "row",
+                  alignItems: "center",
+                }}
+              >
+                <Crown size={12} color="#00FF88" />
+                <Text
+                  style={{
+                    marginLeft: 4,
+                    fontSize: 10,
+                    fontFamily: "Inter_600SemiBold",
+                    color: "#00FF88",
+                  }}
+                >
+                  PREMIUM
+                </Text>
+              </View>
+            )}
+          </View>
+          
+          <TouchableOpacity
+            onPress={() => setShowSearch(!showSearch)}
             style={{
-              marginLeft: 8,
-              fontSize: 28,
-              fontFamily: "Inter_700Bold",
-              color: isDark ? "#FFFFFF" : "#000000",
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: isDark ? "#1E1E1E" : "#FFFFFF",
+              justifyContent: "center",
+              alignItems: "center",
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: isDark ? 0.3 : 0.1,
+              shadowRadius: 4,
+              elevation: 2,
             }}
           >
-            Football News
-          </Text>
+            <Search size={20} color={isDark ? "#FFFFFF" : "#000000"} />
+          </TouchableOpacity>
         </View>
         <Text
           style={{
@@ -520,9 +633,18 @@ export default function NewsScreen() {
             color: isDark ? "#9CA3AF" : "#6B7280",
           }}
         >
-          Latest scores and breaking news
+          {isSubscribed 
+            ? "Personalized news and live streaming" 
+            : "Latest scores and breaking news"}
         </Text>
       </View>
+
+      {/* Enhanced Search */}
+      {showSearch && (
+        <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
+          <EnhancedSearch />
+        </View>
+      )}
 
       <ScrollView
         style={{ flex: 1 }}
@@ -534,6 +656,192 @@ export default function NewsScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
+        {/* Live Streaming Section - Premium */}
+        {isSubscribed && liveMatches && liveMatches.length > 0 && (
+          <View style={{ marginBottom: 32 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                paddingHorizontal: 20,
+                marginBottom: 16,
+              }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Text
+                  style={{
+                    fontSize: 20,
+                    fontFamily: "Inter_600SemiBold",
+                    color: isDark ? "#FFFFFF" : "#000000",
+                  }}
+                >
+                  Live Streaming
+                </Text>
+                <View
+                  style={{
+                    marginLeft: 8,
+                    backgroundColor: "#00FF8820",
+                    paddingHorizontal: 8,
+                    paddingVertical: 4,
+                    borderRadius: 8,
+                    flexDirection: "row",
+                    alignItems: "center",
+                  }}
+                >
+                  <Crown size={12} color="#00FF88" />
+                  <Text
+                    style={{
+                      marginLeft: 4,
+                      fontSize: 10,
+                      fontFamily: "Inter_600SemiBold",
+                      color: "#00FF88",
+                    }}
+                  >
+                    PREMIUM
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingLeft: 20, paddingRight: 4 }}
+            >
+              {liveMatches.map((match) => (
+                <TouchableOpacity
+                  key={match.id}
+                  onPress={() => handleLiveStreamPress(match)}
+                  style={{
+                    backgroundColor: isDark ? "#1E1E1E" : "#FFFFFF",
+                    borderRadius: 16,
+                    padding: 16,
+                    marginRight: 16,
+                    minWidth: 280,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: isDark ? 0.3 : 0.1,
+                    shadowRadius: 8,
+                    elevation: 4,
+                  }}
+                >
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: 12,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        fontFamily: "Inter_500Medium",
+                        color: isDark ? "#9CA3AF" : "#6B7280",
+                      }}
+                    >
+                      {match.competition}
+                    </Text>
+                    <View
+                      style={{
+                        backgroundColor: "#FF6B0020",
+                        paddingHorizontal: 8,
+                        paddingVertical: 4,
+                        borderRadius: 8,
+                        flexDirection: "row",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Play size={10} color="#FF6B00" />
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          fontFamily: "Inter_600SemiBold",
+                          color: "#FF6B00",
+                          marginLeft: 4,
+                        }}
+                      >
+                        LIVE
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      marginBottom: 12,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 16,
+                        fontFamily: "Inter_600SemiBold",
+                        color: isDark ? "#FFFFFF" : "#000000",
+                      }}
+                    >
+                      {match.homeTeam}
+                    </Text>
+                    <View
+                      style={{
+                        backgroundColor: "#00FF8820",
+                        paddingHorizontal: 16,
+                        paddingVertical: 8,
+                        borderRadius: 12,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 16,
+                          fontFamily: "Inter_700Bold",
+                          color: "#00FF88",
+                        }}
+                      >
+                        {match.homeScore} - {match.awayScore}
+                      </Text>
+                    </View>
+                    <Text
+                      style={{
+                        fontSize: 16,
+                        fontFamily: "Inter_600SemiBold",
+                        color: isDark ? "#FFFFFF" : "#000000",
+                      }}
+                    >
+                      {match.awayTeam}
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    onPress={() => handleLiveStreamPress(match)}
+                    style={{
+                      backgroundColor: "#00FF88",
+                      borderRadius: 12,
+                      padding: 12,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Play size={16} color="#000000" />
+                    <Text
+                      style={{
+                        marginLeft: 8,
+                        fontSize: 14,
+                        fontFamily: "Inter_600SemiBold",
+                        color: "#000000",
+                      }}
+                    >
+                      Watch Live
+                    </Text>
+                  </TouchableOpacity>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         {/* Live Scores Section */}
         <View style={{ marginBottom: 32 }}>
           <View
@@ -584,7 +892,7 @@ export default function NewsScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ paddingLeft: 20, paddingRight: 4 }}
           >
-            {liveScores.map(renderLiveScore)}
+            {(displayContent.liveScores || liveScores).map(renderLiveScore)}
           </ScrollView>
         </View>
 
@@ -724,6 +1032,180 @@ export default function NewsScreen() {
           </View>
         </View>
 
+        {/* Premium Articles Section */}
+        {!isSubscribed && premiumContent.length > 0 && (
+          <View style={{ paddingHorizontal: 20, marginBottom: 32 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 16,
+              }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Text
+                  style={{
+                    fontSize: 20,
+                    fontFamily: "Inter_600SemiBold",
+                    color: isDark ? "#FFFFFF" : "#000000",
+                  }}
+                >
+                  Premium Content
+                </Text>
+                <View
+                  style={{
+                    marginLeft: 8,
+                    backgroundColor: "#FFD70020",
+                    paddingHorizontal: 8,
+                    paddingVertical: 4,
+                    borderRadius: 8,
+                    flexDirection: "row",
+                    alignItems: "center",
+                  }}
+                >
+                  <Crown size={12} color="#FFD700" />
+                  <Text
+                    style={{
+                      marginLeft: 4,
+                      fontSize: 10,
+                      fontFamily: "Inter_600SemiBold",
+                      color: "#FFD700",
+                    }}
+                  >
+                    PREMIUM
+                  </Text>
+                </View>
+              </View>
+              
+              <TouchableOpacity
+                onPress={showPaywall}
+                style={{
+                  backgroundColor: "#00FF88",
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 8,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontFamily: "Inter_600SemiBold",
+                    color: "#000000",
+                  }}
+                >
+                  Upgrade
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {premiumContent.slice(0, 2).map((article) => (
+              <TouchableOpacity
+                key={article.id}
+                onPress={() => handlePremiumContentPress(article)}
+                style={{
+                  backgroundColor: isDark ? "#1E1E1E" : "#FFFFFF",
+                  borderRadius: 16,
+                  marginBottom: 16,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: isDark ? 0.3 : 0.1,
+                  shadowRadius: 8,
+                  elevation: 4,
+                  overflow: "hidden",
+                  position: "relative",
+                }}
+              >
+                <Image
+                  source={{ uri: article.image }}
+                  style={{ width: "100%", height: 150, opacity: 0.3 }}
+                  contentFit="cover"
+                />
+                
+                {/* Premium Overlay */}
+                <View
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: "rgba(0, 0, 0, 0.6)",
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                >
+                  <View
+                    style={{
+                      backgroundColor: "#FFD70020",
+                      paddingHorizontal: 16,
+                      paddingVertical: 12,
+                      borderRadius: 16,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      marginBottom: 12,
+                    }}
+                  >
+                    <Lock size={20} color="#FFD700" />
+                    <Text
+                      style={{
+                        marginLeft: 8,
+                        fontSize: 16,
+                        fontFamily: "Inter_600SemiBold",
+                        color: "#FFD700",
+                      }}
+                    >
+                      Premium Article
+                    </Text>
+                  </View>
+                  
+                  <TouchableOpacity
+                    onPress={showPaywall}
+                    style={{
+                      backgroundColor: "#00FF88",
+                      paddingHorizontal: 20,
+                      paddingVertical: 10,
+                      borderRadius: 12,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        fontFamily: "Inter_600SemiBold",
+                        color: "#000000",
+                      }}
+                    >
+                      Unlock with Premium
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={{ padding: 16 }}>
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      fontFamily: "Inter_600SemiBold",
+                      color: isDark ? "#FFFFFF" : "#000000",
+                      marginBottom: 8,
+                    }}
+                  >
+                    {article.title}
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      fontFamily: "Inter_400Regular",
+                      color: isDark ? "#9CA3AF" : "#6B7280",
+                    }}
+                  >
+                    {article.summary.substring(0, 100)}...
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
         {/* News Articles */}
         <View style={{ paddingHorizontal: 20 }}>
           <View
@@ -745,11 +1227,26 @@ export default function NewsScreen() {
             </Text>
           </View>
 
-          {newsArticles.map((article, index) =>
+          {displayContent.articles && displayContent.articles.map((article, index) =>
             renderNewsArticle(article, index === 0),
           )}
         </View>
       </ScrollView>
+      
+      {/* Paywall Modal */}
+      <PaywallModal 
+        isVisible={isPaywallVisible}
+        onClose={hidePaywall}
+      />
+      
+      {/* Live Stream Player */}
+      {selectedLiveMatch && (
+        <LiveStreamPlayer
+          match={selectedLiveMatch}
+          isVisible={!!selectedLiveMatch}
+          onClose={() => setSelectedLiveMatch(null)}
+        />
+      )}
     </View>
   );
 }

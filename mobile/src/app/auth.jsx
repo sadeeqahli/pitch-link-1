@@ -101,11 +101,19 @@ export default function AuthScreen() {
 
     try {
       if (isSignUp) {
-        await signUp();
+        await signUp({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+        });
       } else {
-        await signIn();
+        await signIn({
+          email: formData.email,
+          password: formData.password,
+        });
       }
-      // The auth hooks handle the redirect
+      // Redirect to main app after successful authentication
+      router.replace("/(tabs)/home");
     } catch (error) {
       Alert.alert(
         "Error",

@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
 import { useState, useRef } from "react";
+import * as SecureStore from "expo-secure-store";
 import {
   MapPin,
   Calendar,
@@ -26,6 +27,8 @@ import {
   Inter_600SemiBold,
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
+
+const ONBOARDING_KEY = 'hasCompletedOnboarding';
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -77,7 +80,7 @@ export default function OnboardingScreen() {
     },
   ];
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentIndex < onboardingScreens.length - 1) {
       const nextIndex = currentIndex + 1;
       setCurrentIndex(nextIndex);
@@ -86,11 +89,23 @@ export default function OnboardingScreen() {
         animated: true,
       });
     } else {
+      // Mark onboarding as complete
+      try {
+        await SecureStore.setItemAsync(ONBOARDING_KEY, 'true');
+      } catch (error) {
+        console.log('Error saving onboarding status:', error);
+      }
       router.push("/auth");
     }
   };
 
-  const handleSkip = () => {
+  const handleSkip = async () => {
+    // Mark onboarding as complete when skipped
+    try {
+      await SecureStore.setItemAsync(ONBOARDING_KEY, 'true');
+    } catch (error) {
+      console.log('Error saving onboarding status:', error);
+    }
     router.push("/auth");
   };
 

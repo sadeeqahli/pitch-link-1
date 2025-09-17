@@ -16,31 +16,75 @@ export const useAuth = () => {
   const { isReady, auth, setAuth } = useAuthStore();
   const { isOpen, close, open } = useAuthModal();
 
-  const initiate = useCallback(() => {
-    // Mock authentication for development
-    useAuthStore.setState({
-      auth: { user: { id: '1', email: 'dev@example.com', name: 'Development User' }, jwt: 'mock-jwt' },
-      isReady: true,
-    });
-    // Original code commented out for development
-    // SecureStore.getItemAsync(authKey).then((auth) => {
-    //   useAuthStore.setState({
-    //     auth: auth ? JSON.parse(auth) : null,
-    //     isReady: true,
-    //   });
-    // });
+  const initiate = useCallback(async () => {
+    try {
+      const storedAuth = await SecureStore.getItemAsync(authKey);
+      useAuthStore.setState({
+        auth: storedAuth ? JSON.parse(storedAuth) : null,
+        isReady: true,
+      });
+    } catch (error) {
+      console.log('Error loading auth:', error);
+      useAuthStore.setState({
+        auth: null,
+        isReady: true,
+      });
+    }
   }, []);
 
   useEffect(() => {
     initiate();
   }, [initiate]);
 
-  const signIn = useCallback(() => {
-    open({ mode: 'signin' });
-  }, [open]);
-  const signUp = useCallback(() => {
-    open({ mode: 'signup' });
-  }, [open]);
+  const signIn = useCallback(async (credentials) => {
+    // Mock sign in for development
+    try {
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const mockAuth = {
+        user: {
+          id: '1',
+          email: credentials?.email || 'user@example.com',
+          name: 'User Name'
+        },
+        jwt: 'mock-jwt-token'
+      };
+      
+      // Save to secure store
+      await SecureStore.setItemAsync(authKey, JSON.stringify(mockAuth));
+      setAuth(mockAuth);
+      
+      return mockAuth;
+    } catch (error) {
+      throw new Error('Invalid credentials');
+    }
+  }, [setAuth]);
+  
+  const signUp = useCallback(async (userData) => {
+    // Mock sign up for development
+    try {
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const mockAuth = {
+        user: {
+          id: '1',
+          email: userData?.email || 'user@example.com',
+          name: userData?.name || 'New User'
+        },
+        jwt: 'mock-jwt-token'
+      };
+      
+      // Save to secure store
+      await SecureStore.setItemAsync(authKey, JSON.stringify(mockAuth));
+      setAuth(mockAuth);
+      
+      return mockAuth;
+    } catch (error) {
+      throw new Error('Failed to create account');
+    }
+  }, [setAuth]);
 
   const signOut = useCallback(() => {
     setAuth(null);

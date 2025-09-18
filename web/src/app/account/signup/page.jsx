@@ -1,5 +1,6 @@
 import { useState } from "react";
 import useAuth from "@/utils/useAuth";
+import SocialLoginButtons from "@/components/SocialLoginButtons";
 
 function MainComponent() {
   const [error, setError] = useState(null);
@@ -282,6 +283,9 @@ function MainComponent() {
           >
             {loading ? "Creating Account..." : "Sign Up"}
           </button>
+
+          {/* Social Login Buttons */}
+          <SocialLoginButtons loading={loading} />
 
           <p className="text-center text-sm" style={{ color: "#9CA3AF" }}>
             Already have an account?{" "}

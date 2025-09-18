@@ -28,6 +28,7 @@ import {
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
 import { useAuth } from "@/utils/auth/useAuth";
+import SocialLoginButtons from "@/components/SocialLoginButtons";
 
 export default function AuthScreen() {
   const insets = useSafeAreaInsets();
@@ -39,7 +40,7 @@ export default function AuthScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, signInWithGoogle, signInWithApple } = useAuth();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -118,6 +119,36 @@ export default function AuthScreen() {
       Alert.alert(
         "Error",
         error.message || "Something went wrong. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setLoading(true);
+    try {
+      await signInWithGoogle();
+      router.replace("/(tabs)/home");
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        error.message || "Google Sign-in failed. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    setLoading(true);
+    try {
+      await signInWithApple();
+      router.replace("/(tabs)/home");
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        error.message || "Apple Sign-in failed. Please try again."
       );
     } finally {
       setLoading(false);
@@ -482,6 +513,13 @@ export default function AuthScreen() {
               </Text>
             </Text>
           </TouchableOpacity>
+
+          {/* Social Login Buttons */}
+          <SocialLoginButtons
+            onGoogleSignIn={handleGoogleSignIn}
+            onAppleSignIn={handleAppleSignIn}
+            loading={loading}
+          />
         </View>
 
         {/* Terms and Privacy (Sign Up Only) */}

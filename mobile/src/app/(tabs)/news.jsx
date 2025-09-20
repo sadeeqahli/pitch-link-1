@@ -33,11 +33,7 @@ import {
   Inter_600SemiBold,
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
-import { useSubscriptionStore } from "@/utils/subscription/store";
 import { useContentStore } from "@/utils/content/contentStore";
-import SubscriptionHeader from "@/components/SubscriptionHeader";
-import PaywallModal from "@/components/PaywallModal";
-import LiveStreamPlayer from "@/components/LiveStreamPlayer";
 import EnhancedSearch from "@/components/EnhancedSearch";
 
 export default function NewsScreen() {
@@ -49,16 +45,6 @@ export default function NewsScreen() {
   const [showSearch, setShowSearch] = useState(false);
   const [selectedLiveMatch, setSelectedLiveMatch] = useState(null);
   
-  // Premium subscription hooks
-  const { 
-    isSubscribed, 
-    subscriptionStatus,
-    loadSubscriptionStatus,
-    showPaywall,
-    hidePaywall,
-    isPaywallVisible 
-  } = useSubscriptionStore();
-  
   // Content management hooks
   const {
     articles,
@@ -68,6 +54,9 @@ export default function NewsScreen() {
     getFreeContent,
     getPremiumContent
   } = useContentStore();
+  
+  // Mock subscription state to make all content free
+  const isSubscribed = true;
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -76,10 +65,9 @@ export default function NewsScreen() {
     Inter_700Bold,
   });
 
-  // Load subscription status and content on mount
+  // Load content on mount
   useEffect(() => {
     const initializeContent = async () => {
-      await loadSubscriptionStatus();
       await loadContent();
     };
     initializeContent();
@@ -95,24 +83,18 @@ export default function NewsScreen() {
     setRefreshing(false);
   };
 
-  // Get content based on subscription status
-  const displayContent = isSubscribed ? getPersonalizedContent() : getFreeContent();
-  const premiumContent = getPremiumContent();
+  // Get all content (making everything free)
+  const displayContent = getPersonalizedContent();
+  const premiumContent = []; // No premium content gating
 
   const handlePremiumContentPress = (article) => {
-    if (isSubscribed) {
-      handleNewsPress(article);
-    } else {
-      showPaywall();
-    }
+    // All content is now free
+    handleNewsPress(article);
   };
 
   const handleLiveStreamPress = (match) => {
-    if (isSubscribed) {
-      setSelectedLiveMatch(match);
-    } else {
-      showPaywall();
-    }
+    // All content is now free
+    setSelectedLiveMatch(match);
   };
 
   const handleFixturesPress = () => {
@@ -548,8 +530,7 @@ Would you like to read the full article?`,
     <View style={{ flex: 1, backgroundColor: isDark ? "#0A0A0A" : "#F8F9FA" }}>
       <StatusBar style={isDark ? "light" : "dark"} />
 
-      {/* Subscription Header */}
-      <SubscriptionHeader />
+      {/* Subscription Header removed - all content is now free */}
 
       {/* Header */}
       <View
@@ -580,31 +561,7 @@ Would you like to read the full article?`,
             >
               Football News
             </Text>
-            {isSubscribed && (
-              <View
-                style={{
-                  marginLeft: 8,
-                  backgroundColor: "#00FF8820",
-                  paddingHorizontal: 8,
-                  paddingVertical: 4,
-                  borderRadius: 8,
-                  flexDirection: "row",
-                  alignItems: "center",
-                }}
-              >
-                <Crown size={12} color="#00FF88" />
-                <Text
-                  style={{
-                    marginLeft: 4,
-                    fontSize: 10,
-                    fontFamily: "Inter_600SemiBold",
-                    color: "#00FF88",
-                  }}
-                >
-                  PREMIUM
-                </Text>
-              </View>
-            )}
+            {/* Premium badge removed - all content is now free */}
           </View>
           
           <TouchableOpacity
@@ -633,9 +590,7 @@ Would you like to read the full article?`,
             color: isDark ? "#9CA3AF" : "#6B7280",
           }}
         >
-          {isSubscribed 
-            ? "Personalized news and live streaming" 
-            : "Latest scores and breaking news"}
+          Personalized news and live streaming
         </Text>
       </View>
 
@@ -656,8 +611,8 @@ Would you like to read the full article?`,
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Live Streaming Section - Premium */}
-        {isSubscribed && liveMatches && liveMatches.length > 0 && (
+        {/* Live Streaming Section */}
+        {liveMatches && liveMatches.length > 0 && (
           <View style={{ marginBottom: 32 }}>
             <View
               style={{
@@ -678,29 +633,6 @@ Would you like to read the full article?`,
                 >
                   Live Streaming
                 </Text>
-                <View
-                  style={{
-                    marginLeft: 8,
-                    backgroundColor: "#00FF8820",
-                    paddingHorizontal: 8,
-                    paddingVertical: 4,
-                    borderRadius: 8,
-                    flexDirection: "row",
-                    alignItems: "center",
-                  }}
-                >
-                  <Crown size={12} color="#00FF88" />
-                  <Text
-                    style={{
-                      marginLeft: 4,
-                      fontSize: 10,
-                      fontFamily: "Inter_600SemiBold",
-                      color: "#00FF88",
-                    }}
-                  >
-                    PREMIUM
-                  </Text>
-                </View>
               </View>
             </View>
 
@@ -1032,179 +964,7 @@ Would you like to read the full article?`,
           </View>
         </View>
 
-        {/* Premium Articles Section */}
-        {!isSubscribed && premiumContent.length > 0 && (
-          <View style={{ paddingHorizontal: 20, marginBottom: 32 }}>
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 16,
-              }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                <Text
-                  style={{
-                    fontSize: 20,
-                    fontFamily: "Inter_600SemiBold",
-                    color: isDark ? "#FFFFFF" : "#000000",
-                  }}
-                >
-                  Premium Content
-                </Text>
-                <View
-                  style={{
-                    marginLeft: 8,
-                    backgroundColor: "#FFD70020",
-                    paddingHorizontal: 8,
-                    paddingVertical: 4,
-                    borderRadius: 8,
-                    flexDirection: "row",
-                    alignItems: "center",
-                  }}
-                >
-                  <Crown size={12} color="#FFD700" />
-                  <Text
-                    style={{
-                      marginLeft: 4,
-                      fontSize: 10,
-                      fontFamily: "Inter_600SemiBold",
-                      color: "#FFD700",
-                    }}
-                  >
-                    PREMIUM
-                  </Text>
-                </View>
-              </View>
-              
-              <TouchableOpacity
-                onPress={showPaywall}
-                style={{
-                  backgroundColor: "#00FF88",
-                  paddingHorizontal: 12,
-                  paddingVertical: 6,
-                  borderRadius: 8,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 12,
-                    fontFamily: "Inter_600SemiBold",
-                    color: "#000000",
-                  }}
-                >
-                  Upgrade
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {premiumContent.slice(0, 2).map((article) => (
-              <TouchableOpacity
-                key={article.id}
-                onPress={() => handlePremiumContentPress(article)}
-                style={{
-                  backgroundColor: isDark ? "#1E1E1E" : "#FFFFFF",
-                  borderRadius: 16,
-                  marginBottom: 16,
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: isDark ? 0.3 : 0.1,
-                  shadowRadius: 8,
-                  elevation: 4,
-                  overflow: "hidden",
-                  position: "relative",
-                }}
-              >
-                <Image
-                  source={{ uri: article.image }}
-                  style={{ width: "100%", height: 150, opacity: 0.3 }}
-                  contentFit="cover"
-                />
-                
-                {/* Premium Overlay */}
-                <View
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: "rgba(0, 0, 0, 0.6)",
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                >
-                  <View
-                    style={{
-                      backgroundColor: "#FFD70020",
-                      paddingHorizontal: 16,
-                      paddingVertical: 12,
-                      borderRadius: 16,
-                      flexDirection: "row",
-                      alignItems: "center",
-                      marginBottom: 12,
-                    }}
-                  >
-                    <Lock size={20} color="#FFD700" />
-                    <Text
-                      style={{
-                        marginLeft: 8,
-                        fontSize: 16,
-                        fontFamily: "Inter_600SemiBold",
-                        color: "#FFD700",
-                      }}
-                    >
-                      Premium Article
-                    </Text>
-                  </View>
-                  
-                  <TouchableOpacity
-                    onPress={showPaywall}
-                    style={{
-                      backgroundColor: "#00FF88",
-                      paddingHorizontal: 20,
-                      paddingVertical: 10,
-                      borderRadius: 12,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 14,
-                        fontFamily: "Inter_600SemiBold",
-                        color: "#000000",
-                      }}
-                    >
-                      Unlock with Premium
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-                <View style={{ padding: 16 }}>
-                  <Text
-                    style={{
-                      fontSize: 16,
-                      fontFamily: "Inter_600SemiBold",
-                      color: isDark ? "#FFFFFF" : "#000000",
-                      marginBottom: 8,
-                    }}
-                  >
-                    {article.title}
-                  </Text>
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      fontFamily: "Inter_400Regular",
-                      color: isDark ? "#9CA3AF" : "#6B7280",
-                    }}
-                  >
-                    {article.summary.substring(0, 100)}...
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
+        {/* Premium Content Section removed - all content is now free */}
 
         {/* News Articles */}
         <View style={{ paddingHorizontal: 20 }}>
@@ -1233,20 +993,7 @@ Would you like to read the full article?`,
         </View>
       </ScrollView>
       
-      {/* Paywall Modal */}
-      <PaywallModal 
-        isVisible={isPaywallVisible}
-        onClose={hidePaywall}
-      />
-      
-      {/* Live Stream Player */}
-      {selectedLiveMatch && (
-        <LiveStreamPlayer
-          match={selectedLiveMatch}
-          isVisible={!!selectedLiveMatch}
-          onClose={() => setSelectedLiveMatch(null)}
-        />
-      )}
+      {/* Paywall Modal and Live Stream Player removed - all content is now free */}
     </View>
   );
 }

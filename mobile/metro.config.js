@@ -3,9 +3,6 @@ const path = require('path');
 
 const config = getDefaultConfig(__dirname);
 
-// Add support for web-specific aliases
-config.resolver.sourceExts = [...config.resolver.sourceExts, 'web.ts', 'web.tsx', 'web.jsx'];
-
 // Set up a simpler cache directory
 const cacheDir = path.join(__dirname, 'cache');
 const { FileStore } = require('metro-cache');

@@ -1,10 +1,5 @@
-import ExceptionsManager from 'react-native/Libraries/Core/ExceptionsManager';
-
-if (__DEV__) {
-  ExceptionsManager.handleException = (error, isFatal) => {
-    // no-op
-  };
-}
+// Removed deprecated deep import from 'react-native/Libraries/Core/ExceptionsManager'
+// Custom error handling can be implemented using other approaches if needed
 
 import 'react-native-url-polyfill/auto';
 import './src/__create/polyfills';

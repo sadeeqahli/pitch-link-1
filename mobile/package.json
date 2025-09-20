@@ -30,7 +30,7 @@
     "@uploadcare/upload-client": "6.14.3",
     "color2k": "^2.0.3",
     "date-fns": "^4.1.0",
-    "expo": "53.0.22",
+    "expo": "~54.0.0",
     "expo-audio": "~0.4.9",
     "expo-av": "~15.1.7",
     "expo-blur": "~14.1.5",
@@ -69,7 +69,7 @@
     "papaparse": "^5.5.3",
     "react": "19.0.0",
     "react-dom": "19.0.0",
-    "react-native": "0.79.5",
+    "react-native": "0.81.4",
     "react-native-calendars": "https://codeload.github.com/craftworkco/react-native-calendars/tar.gz/ae19e2af74ecdb29d6117ca41fbf41977a10cc23",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-graph": "^1.1.0",
@@ -90,11 +90,11 @@
     "zustand": "5.0.3"
   },
   "devDependencies": {
-    "@types/react": "~19.0.10",
+    "@types/react": "~19.1.10",
     "autoprefixer": "10.4.20",
     "patch-package": "^8.0.0",
     "postcss": "8.5.2",
-    "typescript": "~5.8.3"
+    "typescript": "~5.9.2"
   },
   "overrides": {
     "@shopify/react-native-skia": "v2.0.0-next.4",

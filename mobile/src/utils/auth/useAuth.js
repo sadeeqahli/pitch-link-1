@@ -3,8 +3,21 @@ import * as SecureStore from 'expo-secure-store';
 import { useCallback, useEffect, useMemo } from 'react';
 import { create } from 'zustand';
 import { Modal, View, Platform } from 'react-native';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import * as AppleAuthentication from 'expo-apple-authentication';
+// Conditional imports for native-only packages
+let GoogleSignin;
+let AppleAuthentication;
+
+try {
+  GoogleSignin = require('@react-native-google-signin/google-signin').GoogleSignin;
+} catch (e) {
+  GoogleSignin = null;
+}
+
+try {
+  AppleAuthentication = require('expo-apple-authentication');
+} catch (e) {
+  AppleAuthentication = null;
+}
 import { useAuthModal, useAuthStore, authKey } from './store';
 
 // Mock user database for development
@@ -36,12 +49,14 @@ const generateUserId = () => {
 
 // Configure Google Sign-in
 const configureGoogleSignIn = () => {
-  GoogleSignin.configure({
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, // From Google Cloud Console
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID, // From Google Cloud Console
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID, // From Google Cloud Console
-    scopes: ['email', 'profile'],
-  });
+  if (GoogleSignin) {
+    GoogleSignin.configure({
+      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, // From Google Cloud Console
+      iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID, // From Google Cloud Console
+      androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID, // From Google Cloud Console
+      scopes: ['email', 'profile'],
+    });
+  }
 };
 
 // Initialize Google Sign-in configuration
@@ -123,6 +138,11 @@ export const useAuth = () => {
   }, [setAuth]);
   
   const signInWithGoogle = useCallback(async () => {
+    // Check if Google Sign-in is available
+    if (!GoogleSignin) {
+      throw new Error('Google Sign-in is not available on this platform');
+    }
+    
     try {
       // Check if device supports Google Play Services
       await GoogleSignin.hasPlayServices();
@@ -189,6 +209,11 @@ export const useAuth = () => {
   }, [setAuth]);
 
   const signInWithApple = useCallback(async () => {
+    // Check if Apple authentication is available
+    if (!AppleAuthentication) {
+      throw new Error('Apple Sign-in is not available on this platform');
+    }
+    
     try {
       // Check if Apple authentication is available
       if (Platform.OS === 'ios' && !await AppleAuthentication.isAvailableAsync()) {
@@ -260,6 +285,72 @@ export const useAuth = () => {
   const getCurrentUser = useCallback(() => {
     return auth?.user || null;
   }, [auth]);
+
+  const signOut = useCallback(async () => {
+    try {
+      await SecureStore.deleteItemAsync(authKey);
+      setAuth(null);
+      
+      // Reset any user-specific data in other stores
+      // For example, you might want to reset user preferences
+      
+      return true;
+    } catch (error) {
+      console.error('Sign out error:', error);
+      throw error;
+    }
+  }, [setAuth]);
+
+  const signUp = useCallback(async (userData) => {
+    try {
+      if (!userData?.email || !userData?.password || !userData?.name) {
+        throw new Error('Email, password, and name are required');
+      }
+
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Get existing users
+      const users = await getMockUsers();
+      
+      // Check if user already exists
+      const existingUser = users.find(u => u.email.toLowerCase() === userData.email.toLowerCase());
+      
+      if (existingUser) {
+        throw new Error('An account with this email already exists');
+      }
+      
+      // Create new user
+      const newUser = {
+        id: generateUserId(),
+        name: userData.name,
+        email: userData.email.toLowerCase(),
+        password: userData.password, // In real app, this would be hashed
+        createdAt: new Date().toISOString(),
+      };
+      
+      users.push(newUser);
+      await saveMockUsers(users);
+      
+      const authData = {
+        user: {
+          id: newUser.id,
+          email: newUser.email,
+          name: newUser.name,
+          createdAt: newUser.createdAt,
+        },
+        jwt: 'mock-jwt-token-' + Date.now()
+      };
+      
+      // Save to secure store
+      await SecureStore.setItemAsync(authKey, JSON.stringify(authData));
+      setAuth(authData);
+      
+      return authData;
+    } catch (error) {
+      throw error;
+    }
+  }, [setAuth]);
 
   const updateUserProfile = useCallback(async (updates) => {
     try {

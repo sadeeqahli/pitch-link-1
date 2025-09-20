@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { 
   DEFAULT_PRICING, 

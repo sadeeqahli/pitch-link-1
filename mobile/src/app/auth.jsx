@@ -28,7 +28,7 @@ import {
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
 import { useAuth } from "@/utils/auth/useAuth";
-import SocialLoginButtons from "@/components/SocialLoginButtons";
+// SocialLoginButtons import removed as per project requirements
 
 export default function AuthScreen() {
   const insets = useSafeAreaInsets();
@@ -40,7 +40,7 @@ export default function AuthScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const { signIn, signUp, signInWithGoogle, signInWithApple } = useAuth();
+  const { signIn, signUp } = useAuth();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -125,35 +125,7 @@ export default function AuthScreen() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    setLoading(true);
-    try {
-      await signInWithGoogle();
-      router.replace("/(tabs)/home");
-    } catch (error) {
-      Alert.alert(
-        "Error",
-        error.message || "Google Sign-in failed. Please try again."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAppleSignIn = async () => {
-    setLoading(true);
-    try {
-      await signInWithApple();
-      router.replace("/(tabs)/home");
-    } catch (error) {
-      Alert.alert(
-        "Error",
-        error.message || "Apple Sign-in failed. Please try again."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Social login functions removed as per project requirements
 
   const toggleAuthMode = () => {
     setIsSignUp(!isSignUp);
@@ -514,12 +486,7 @@ export default function AuthScreen() {
             </Text>
           </TouchableOpacity>
 
-          {/* Social Login Buttons */}
-          <SocialLoginButtons
-            onGoogleSignIn={handleGoogleSignIn}
-            onAppleSignIn={handleAppleSignIn}
-            loading={loading}
-          />
+          {/* Social Login Buttons removed as per project requirements */}
         </View>
 
         {/* Terms and Privacy (Sign Up Only) */}

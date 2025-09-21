@@ -120,14 +120,10 @@ export default function HomeScreen() {
   ];
 
   const handleSearch = () => {
-    if (searchText.trim()) {
-      router.push({
-        pathname: "/(tabs)/search",
-        params: { query: searchText }
-      });
-    } else {
-      router.push("/(tabs)/search");
-    }
+    router.push({
+      pathname: "/(tabs)/search",
+      params: { query: searchText }
+    });
   };
   
   const applyQuickFilter = (filterType, value) => {

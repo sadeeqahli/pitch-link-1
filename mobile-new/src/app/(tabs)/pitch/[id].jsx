@@ -468,7 +468,7 @@ export default function PitchDetailsScreen() {
                   color: "#00FF88",
                 }}
               >
-                {formatCurrency(pricing.total)}
+                {formatCurrency(pitch.basePricePerHour)}
               </Text>
               <Text
                 style={{
@@ -478,7 +478,7 @@ export default function PitchDetailsScreen() {
                   marginLeft: 8,
                 }}
               >
-                for {selectedDuration} hour{selectedDuration > 1 ? 's' : ''}
+                per hour
               </Text>
             </View>
             

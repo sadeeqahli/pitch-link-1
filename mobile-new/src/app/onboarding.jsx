@@ -23,7 +23,7 @@ import {
 import {
   useFonts,
   Inter_400Regular,
-  Inter_500Medium,
+  Inter_505Medium,
   Inter_600SemiBold,
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
@@ -42,11 +42,17 @@ export default function OnboardingScreen() {
 
   useEffect(() => {
     console.log('Onboarding screen mounted');
+    // Check current onboarding status
+    SecureStore.getItemAsync(ONBOARDING_KEY).then(value => {
+      console.log('Current onboarding status:', value);
+    }).catch(error => {
+      console.log('Error checking onboarding status:', error);
+    });
   }, []);
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
-    Inter_500Medium,
+    Inter_505Medium,
     Inter_600SemiBold,
     Inter_700Bold,
   });
@@ -85,20 +91,22 @@ export default function OnboardingScreen() {
   ];
 
   const handleNext = async () => {
-    console.log('Next button pressed, current index:', currentIndex);
+    console.log('Current index:', currentIndex);
+    console.log('Total screens:', onboardingScreens.length);
     if (currentIndex < onboardingScreens.length - 1) {
       const nextIndex = currentIndex + 1;
+      console.log('Moving to next screen:', nextIndex);
       setCurrentIndex(nextIndex);
       scrollViewRef.current?.scrollTo({
         x: nextIndex * screenWidth,
         animated: true,
       });
     } else {
+      console.log('Onboarding complete, redirecting to auth');
       // Mark onboarding as complete
       try {
-        console.log('Marking onboarding as complete');
         await SecureStore.setItemAsync(ONBOARDING_KEY, 'true');
-        console.log('Onboarding marked as complete, redirecting to auth');
+        console.log('Onboarding status saved successfully as true');
       } catch (error) {
         console.log('Error saving onboarding status:', error);
       }
@@ -107,11 +115,11 @@ export default function OnboardingScreen() {
   };
 
   const handleSkip = async () => {
-    console.log('Skip button pressed');
+    console.log('Skipping onboarding');
     // Mark onboarding as complete when skipped
     try {
       await SecureStore.setItemAsync(ONBOARDING_KEY, 'true');
-      console.log('Onboarding marked as complete (skipped), redirecting to auth');
+      console.log('Onboarding status saved successfully as true');
     } catch (error) {
       console.log('Error saving onboarding status:', error);
     }

@@ -10,8 +10,8 @@ import {
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import { useState, useEffect } from "react";
 import {
   Search,
   MapPin,
@@ -37,10 +37,11 @@ import {
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { query } = useLocalSearchParams();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
 
-  const [searchText, setSearchText] = useState("");
+  const [searchText, setSearchText] = useState(query || "");
   const [isMapView, setIsMapView] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedDate, setSelectedDate] = useState("Today");
@@ -54,11 +55,17 @@ export default function SearchScreen() {
     Inter_700Bold,
   });
 
+  useEffect(() => {
+    if (query) {
+      setSearchText(query);
+    }
+  }, [query]);
+
   if (!fontsLoaded) {
     return null;
   }
 
-  const searchResults = [
+  const allPitches = [
     {
       id: 1,
       name: "Greenfield Stadium",
@@ -130,6 +137,17 @@ export default function SearchScreen() {
       surface: "Natural Grass",
     },
   ];
+
+  // Filter pitches based on search text
+  const filteredPitches = allPitches.filter(pitch => {
+    if (!searchText) return true;
+    const searchTextLower = searchText.toLowerCase();
+    return (
+      pitch.name.toLowerCase().includes(searchTextLower) ||
+      pitch.type.toLowerCase().includes(searchTextLower) ||
+      pitch.amenities.some(amenity => amenity.toLowerCase().includes(searchTextLower))
+    );
+  });
 
   const handlePitchPress = (pitchId) => {
     router.push(`/(tabs)/pitch/${pitchId}`);
@@ -808,9 +826,9 @@ export default function SearchScreen() {
               marginBottom: 16,
             }}
           >
-            {searchResults.length} pitches found
+            {filteredPitches.length} pitches found
           </Text>
-          {searchResults.map(renderPitchCard)}
+          {filteredPitches.map(renderPitchCard)}
         </ScrollView>
       )}
 

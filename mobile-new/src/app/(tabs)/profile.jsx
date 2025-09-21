@@ -39,9 +39,6 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { useAuth } from "@/utils/auth/useAuth";
 import useUser from "@/utils/auth/useUser";
-import ResetOnboardingButton from "@/components/ResetOnboardingButton";
-import DebugAuthButton from "@/components/DebugAuthButton";
-import ClearAllDataButton from "@/components/ClearAllDataButton";
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -134,7 +131,7 @@ export default function ProfileScreen() {
             Please sign in to view your profile
           </Text>
           <TouchableOpacity
-            onPress={() => signIn()}
+            onPress={() => router.push("/auth")}
             style={{
               backgroundColor: "#00FF88",
               paddingHorizontal: 32,
@@ -630,15 +627,6 @@ export default function ProfileScreen() {
               </Text>
             </View>
           </View>
-
-          {/* Reset Onboarding Button (Development Only) */}
-          <ResetOnboardingButton />
-          
-          {/* Debug Auth Buttons (Development Only) */}
-          <DebugAuthButton />
-          
-          {/* Clear All Data Button (Development Only) */}
-          <ClearAllDataButton />
         </View>
 
         {/* Personal Information Section */}

@@ -146,7 +146,8 @@ export default function BookingSummaryScreen() {
         time,
         duration,
         basePricePerHour,
-        totalPrice: pricing.total.toString(),
+        price: formatCurrency(pricing.subtotal),
+        total: pricing.total.toString(),
       },
     });
   };
@@ -246,8 +247,8 @@ export default function BookingSummaryScreen() {
                 lineHeight: 24,
               }}
             >
-              Congratulations! You're saving {formatCurrency(pricing.firstBookingDiscount)} on your first booking with PitchLink. 
-              Welcome to the community!
+                Congratulations! You're saving {formatCurrency(pricing.firstBookingDiscount)} on your first booking with PitchLink. 
+                Welcome to the community!
             </Text>
           </View>
         )}
@@ -647,100 +648,70 @@ export default function BookingSummaryScreen() {
               </Text>
             </View>
           )}
-          
-          {pricing.durationDiscount > 0 && (
+
             <View
               style={{
                 flexDirection: "row",
                 justifyContent: "space-between",
                 alignItems: "center",
-                marginBottom: 12,
+                marginBottom: 16,
               }}
             >
               <Text
                 style={{
                   fontSize: 16,
                   fontFamily: "Inter_400Regular",
-                  color: "#00FF88",
+                  color: isDark ? "#FFFFFF" : "#000000",
                 }}
               >
-                Duration discount
+                Service fee
               </Text>
               <Text
                 style={{
                   fontSize: 16,
                   fontFamily: "Inter_500Medium",
-                  color: "#00FF88",
-                }}
-              >
-                -{formatCurrency(pricing.durationDiscount)}
-              </Text>
-            </View>
-          )}
-
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 16,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 16,
-                fontFamily: "Inter_400Regular",
-                color: isDark ? "#FFFFFF" : "#000000",
-              }}
-            >
-              Service fee
-            </Text>
-            <Text
-              style={{
-                fontSize: 16,
-                fontFamily: "Inter_500Medium",
-                color: isDark ? "#FFFFFF" : "#000000",
-              }}
-            >
-              {formatCurrency(pricing.serviceFee)}
-            </Text>
-          </View>
-
-          <View
-            style={{
-              borderTopWidth: 1,
-              borderTopColor: isDark ? "#333333" : "#EAEAEA",
-              paddingTop: 16,
-            }}
-          >
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 18,
-                  fontFamily: "Inter_600SemiBold",
                   color: isDark ? "#FFFFFF" : "#000000",
                 }}
               >
-                Total
-              </Text>
-              <Text
-                style={{
-                  fontSize: 20,
-                  fontFamily: "Inter_700Bold",
-                  color: "#00FF88",
-                }}
-              >
-                {formatCurrency(pricing.total)}
+                {formatCurrency(pricing.serviceFee)}
               </Text>
             </View>
+
+            <View
+              style={{
+                borderTopWidth: 1,
+                borderTopColor: isDark ? "#333333" : "#EAEAEA",
+                paddingTop: 16,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 18,
+                    fontFamily: "Inter_600SemiBold",
+                    color: isDark ? "#FFFFFF" : "#000000",
+                  }}
+                >
+                  Total
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 20,
+                    fontFamily: "Inter_700Bold",
+                    color: "#00FF88",
+                  }}
+                >
+                  {formatCurrency(pricing.total)}
+                </Text>
+              </View>
+            </View>
           </View>
-        </View>
       </ScrollView>
 
       {/* Bottom Payment Button */}

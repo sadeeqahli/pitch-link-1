@@ -36,10 +36,13 @@ export default function AuthScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   const [isSignUp, setIsSignUp] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
+    confirmPassword: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -99,6 +102,7 @@ export default function AuthScreen() {
     if (!validateForm()) return;
 
     setLoading(true);
+    setError("");
 
     try {
       if (isSignUp) {
@@ -107,58 +111,20 @@ export default function AuthScreen() {
           email: formData.email,
           password: formData.password,
         });
+        router.push("/(tabs)/home");
       } else {
         await signIn({
           email: formData.email,
           password: formData.password,
         });
+        router.push("/(tabs)/home");
       }
-      // Redirect to main app after successful authentication
-      router.replace("/(tabs)/home");
     } catch (error) {
+      setError(error.message || "Something went wrong. Please try again.");
       Alert.alert(
         "Error",
         error.message || "Something went wrong. Please try again."
       );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSignIn = async () => {
-    console.log('Sign in attempt with:', formData);
-    try {
-      setLoading(true);
-      setError("");
-      await signIn({
-        email: formData.email,
-        password: formData.password,
-      });
-      console.log('Sign in successful, redirecting to home');
-      router.push("/(tabs)/home");
-    } catch (err) {
-      console.log('Sign in error:', err.message);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSignUp = async () => {
-    console.log('Sign up attempt with:', formData);
-    try {
-      setLoading(true);
-      setError("");
-      await signUp({
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
-      });
-      console.log('Sign up successful, redirecting to home');
-      router.push("/(tabs)/home");
-    } catch (err) {
-      console.log('Sign up error:', err.message);
-      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -273,6 +239,31 @@ export default function AuthScreen() {
           >
             {isSignUp ? "Create Account" : "Welcome Back"}
           </Text>
+
+          {/* Error Message */}
+          {error ? (
+            <View
+              style={{
+                backgroundColor: "#FF444420",
+                borderRadius: 12,
+                padding: 16,
+                marginBottom: 20,
+                borderWidth: 1,
+                borderColor: "#FF4444",
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 14,
+                  fontFamily: "Inter_500Medium",
+                  color: "#FF4444",
+                  textAlign: "center",
+                }}
+              >
+                {error}
+              </Text>
+            </View>
+          ) : null}
 
           {/* Name Field (Sign Up Only) */}
           {isSignUp && (

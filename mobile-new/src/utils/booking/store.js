@@ -49,8 +49,8 @@ export const calculatePricing = (basePricePerHour, duration, isFirstBooking = fa
   // Calculate first-time booking discount (10% off subtotal)
   const firstBookingDiscount = isFirstBooking ? baseTotal * 0.1 : 0;
   
-  // Calculate duration discount (existing logic)
-  const durationDiscount = duration > 1 ? (basePricePerHour * duration - baseTotal) : 0;
+  // Remove duration discount calculation
+  const durationDiscount = 0;
   
   const total = baseTotal - firstBookingDiscount + serviceFee;
   

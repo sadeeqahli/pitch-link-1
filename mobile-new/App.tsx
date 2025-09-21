@@ -6,7 +6,6 @@ import './src/__create/polyfills';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Toaster } from 'sonner-native';
 import './global.css';
-import { comprehensiveDebug } from './src/utils/comprehensiveDebug';
 
 const GlobalErrorReporter = () => {
   return null;
@@ -41,11 +40,6 @@ const healthyResponse = {
 // Removed web-specific handshake code for mobile-only app
 
 const CreateApp = () => {
-  // Run comprehensive debug on app start
-  useEffect(() => {
-    comprehensiveDebug();
-  }, []);
-
   return (
     <>
       <Wrapper />

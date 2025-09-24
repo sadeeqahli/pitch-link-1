@@ -58,6 +58,7 @@ export default function ProfileScreen() {
     phone: "+234 81 1234 5678", // Changed to Nigerian format
     email: "john.smith@pitchlink.com",
     location: "Lagos, Nigeria", // Changed to Nigerian location
+    bio: "Football enthusiast since 2020", // Added bio field
   });
 
   const [editingData, setEditingData] = useState(profileData);
@@ -131,7 +132,7 @@ export default function ProfileScreen() {
             Please sign in to view your profile
           </Text>
           <TouchableOpacity
-            onPress={() => signIn()}
+            onPress={() => router.push("/auth")}
             style={{
               backgroundColor: "#00FF88",
               paddingHorizontal: 32,
@@ -394,6 +395,13 @@ export default function ProfileScreen() {
       value: profileData.location,
       editable: true,
     },
+    {
+      icon: Edit3,
+      label: "Bio",
+      field: "bio",
+      value: profileData.bio,
+      editable: true,
+    },
   ];
 
   const accountItems = [
@@ -402,12 +410,6 @@ export default function ProfileScreen() {
       label: "My Bookings",
       value: "View your pitch reservations",
       onPress: () => router.push("/(tabs)/bookings"),
-    },
-    {
-      icon: CreditCard,
-      label: "Payment Methods",
-      value: "Manage your payment options",
-      onPress: () => console.log("Payment Methods"),
     },
     {
       icon: Settings,
@@ -531,7 +533,7 @@ export default function ProfileScreen() {
               marginBottom: 16,
             }}
           >
-            Football enthusiast since 2020
+            {profileData.bio}
           </Text>
 
           {/* Quick Stats */}
@@ -548,19 +550,19 @@ export default function ProfileScreen() {
               elevation: 4,
             }}
           >
-            <View style={{ alignItems: "center", paddingHorizontal: 20 }}>
+            <View style={{ flex: 1, alignItems: "center" }}>
               <Text
                 style={{
                   fontSize: 20,
                   fontFamily: "Inter_700Bold",
-                  color: "#00FF88",
+                  color: isDark ? "#FFFFFF" : "#000000",
                 }}
               >
-                12
+                24
               </Text>
               <Text
                 style={{
-                  fontSize: 12,
+                  fontSize: 14,
                   fontFamily: "Inter_400Regular",
                   color: isDark ? "#9CA3AF" : "#6B7280",
                 }}
@@ -572,58 +574,29 @@ export default function ProfileScreen() {
             <View
               style={{
                 width: 1,
-                height: 40,
-                backgroundColor: isDark ? "#333333" : "#EAEAEA",
+                backgroundColor: isDark ? "#333333" : "#E6E6E6",
+                marginHorizontal: 16,
               }}
             />
 
-            <View style={{ alignItems: "center", paddingHorizontal: 20 }}>
+            <View style={{ flex: 1, alignItems: "center" }}>
               <Text
                 style={{
                   fontSize: 20,
                   fontFamily: "Inter_700Bold",
-                  color: "#00FF88",
+                  color: isDark ? "#FFFFFF" : "#000000",
                 }}
               >
                 4.8
               </Text>
               <Text
                 style={{
-                  fontSize: 12,
+                  fontSize: 14,
                   fontFamily: "Inter_400Regular",
                   color: isDark ? "#9CA3AF" : "#6B7280",
                 }}
               >
                 Rating
-              </Text>
-            </View>
-
-            <View
-              style={{
-                width: 1,
-                height: 40,
-                backgroundColor: isDark ? "#333333" : "#EAEAEA",
-              }}
-            />
-
-            <View style={{ alignItems: "center", paddingHorizontal: 20 }}>
-              <Text
-                style={{
-                  fontSize: 20,
-                  fontFamily: "Inter_700Bold",
-                  color: "#00FF88",
-                }}
-              >
-                3
-              </Text>
-              <Text
-                style={{
-                  fontSize: 12,
-                  fontFamily: "Inter_400Regular",
-                  color: isDark ? "#9CA3AF" : "#6B7280",
-                }}
-              >
-                Favorites
               </Text>
             </View>
           </View>

@@ -10,7 +10,7 @@ import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import * as SecureStore from "expo-secure-store";
 import {
   MapPin,
@@ -23,7 +23,7 @@ import {
 import {
   useFonts,
   Inter_400Regular,
-  Inter_500Medium,
+  Inter_505Medium,
   Inter_600SemiBold,
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
@@ -40,9 +40,19 @@ export default function OnboardingScreen() {
   const scrollViewRef = useRef(null);
   const [currentIndex, setCurrentIndex] = useState(0);
 
+  useEffect(() => {
+    console.log('Onboarding screen mounted');
+    // Check current onboarding status
+    SecureStore.getItemAsync(ONBOARDING_KEY).then(value => {
+      console.log('Current onboarding status:', value);
+    }).catch(error => {
+      console.log('Error checking onboarding status:', error);
+    });
+  }, []);
+
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
-    Inter_500Medium,
+    Inter_505Medium,
     Inter_600SemiBold,
     Inter_700Bold,
   });
@@ -81,17 +91,22 @@ export default function OnboardingScreen() {
   ];
 
   const handleNext = async () => {
+    console.log('Current index:', currentIndex);
+    console.log('Total screens:', onboardingScreens.length);
     if (currentIndex < onboardingScreens.length - 1) {
       const nextIndex = currentIndex + 1;
+      console.log('Moving to next screen:', nextIndex);
       setCurrentIndex(nextIndex);
       scrollViewRef.current?.scrollTo({
         x: nextIndex * screenWidth,
         animated: true,
       });
     } else {
+      console.log('Onboarding complete, redirecting to auth');
       // Mark onboarding as complete
       try {
         await SecureStore.setItemAsync(ONBOARDING_KEY, 'true');
+        console.log('Onboarding status saved successfully as true');
       } catch (error) {
         console.log('Error saving onboarding status:', error);
       }
@@ -100,9 +115,11 @@ export default function OnboardingScreen() {
   };
 
   const handleSkip = async () => {
+    console.log('Skipping onboarding');
     // Mark onboarding as complete when skipped
     try {
       await SecureStore.setItemAsync(ONBOARDING_KEY, 'true');
+      console.log('Onboarding status saved successfully as true');
     } catch (error) {
       console.log('Error saving onboarding status:', error);
     }
@@ -122,33 +139,42 @@ export default function OnboardingScreen() {
       {/* Logo */}
       <View
         style={{
-          paddingTop: insets.top + 20,
+          paddingTop: insets.top + 30,
           paddingHorizontal: 20,
           alignItems: "center",
-          marginBottom: 20,
+          marginBottom: 30,
         }}
       >
         <Image
-          source={{
-            uri: "https://ucarecdn.com/5a14b9a2-5a17-44ae-af07-ce9687d3e50c/-/format/auto/",
-          }}
+          source={{ uri: 'https://i.postimg.cc/GHcfV4y7/Pitch-Link-Logo.png' }}
           style={{
-            width: 80,
-            height: 80,
-            borderRadius: 40,
+            width: 100,
+            height: 100,
+            borderRadius: 50,
           }}
           contentFit="contain"
         />
         <Text
           style={{
-            fontSize: 28,
+            fontSize: 32,
             fontFamily: "Inter_700Bold",
             color: "#00FF88",
-            marginTop: 16,
+            marginTop: 20,
             letterSpacing: -0.5,
           }}
         >
           PitchLink
+        </Text>
+        <Text
+          style={{
+            fontSize: 18,
+            fontFamily: "Inter_400Regular",
+            color: "#AAAAAA",
+            marginTop: 8,
+            textAlign: "center",
+          }}
+        >
+          Connect. Play. Win.
         </Text>
       </View>
 

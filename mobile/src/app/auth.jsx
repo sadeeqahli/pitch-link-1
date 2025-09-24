@@ -11,7 +11,7 @@ import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ArrowLeft,
   Mail,
@@ -38,16 +38,19 @@ export default function AuthScreen() {
   const [isSignUp, setIsSignUp] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  const { signIn, signUp } = useAuth();
-
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
     confirmPassword: "",
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const { signIn, signUp, isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    console.log('Auth screen mounted, isAuthenticated:', isAuthenticated);
+  }, [isAuthenticated]);
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -99,6 +102,7 @@ export default function AuthScreen() {
     if (!validateForm()) return;
 
     setLoading(true);
+    setError("");
 
     try {
       if (isSignUp) {
@@ -107,15 +111,16 @@ export default function AuthScreen() {
           email: formData.email,
           password: formData.password,
         });
+        router.push("/(tabs)/home");
       } else {
         await signIn({
           email: formData.email,
           password: formData.password,
         });
+        router.push("/(tabs)/home");
       }
-      // Redirect to main app after successful authentication
-      router.replace("/(tabs)/home");
     } catch (error) {
+      setError(error.message || "Something went wrong. Please try again.");
       Alert.alert(
         "Error",
         error.message || "Something went wrong. Please try again."
@@ -167,13 +172,11 @@ export default function AuthScreen() {
         {/* Logo */}
         <View style={{ alignItems: "center", marginBottom: 40 }}>
           <Image
-            source={{
-              uri: "https://ucarecdn.com/5a14b9a2-5a17-44ae-af07-ce9687d3e50c/-/format/auto/",
-            }}
+            source={{ uri: 'https://i.postimg.cc/GHcfV4y7/Pitch-Link-Logo.png' }}
             style={{
-              width: 60,
-              height: 60,
-              borderRadius: 30,
+              width: 100,
+              height: 100,
+              borderRadius: 50,
               marginBottom: 16,
             }}
             contentFit="contain"
@@ -236,6 +239,31 @@ export default function AuthScreen() {
           >
             {isSignUp ? "Create Account" : "Welcome Back"}
           </Text>
+
+          {/* Error Message */}
+          {error ? (
+            <View
+              style={{
+                backgroundColor: "#FF444420",
+                borderRadius: 12,
+                padding: 16,
+                marginBottom: 20,
+                borderWidth: 1,
+                borderColor: "#FF4444",
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 14,
+                  fontFamily: "Inter_500Medium",
+                  color: "#FF4444",
+                  textAlign: "center",
+                }}
+              >
+                {error}
+              </Text>
+            </View>
+          ) : null}
 
           {/* Name Field (Sign Up Only) */}
           {isSignUp && (

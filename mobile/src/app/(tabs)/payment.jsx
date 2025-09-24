@@ -34,7 +34,7 @@ export default function PaymentScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
 
-  const { pitchId, pitchName, date, time, price, total } =
+  const { pitchId, pitchName, date, time, duration, basePricePerHour, price, total } =
     useLocalSearchParams();
 
   const [cardNumber, setCardNumber] = useState("");
@@ -67,6 +67,11 @@ export default function PaymentScreen() {
       return `${cleaned.substring(0, 2)}/${cleaned.substring(2, 4)}`;
     }
     return cleaned;
+  };
+
+  const formatCurrency = (amount) => {
+    const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+    return `₦${numAmount.toLocaleString()}`;
   };
 
   const handlePayment = async () => {
@@ -538,7 +543,7 @@ export default function PaymentScreen() {
                   color: isDark ? "#FFFFFF" : "#000000",
                 }}
               >
-                {price}
+                {price || formatCurrency(parseFloat(basePricePerHour || 0) * parseFloat(duration || 1))}
               </Text>
             </View>
 
@@ -557,7 +562,7 @@ export default function PaymentScreen() {
                   color: isDark ? "#9CA3AF" : "#6B7280",
                 }}
               >
-                {new Date(date).toLocaleDateString("en-GB")} • {time}
+                {date ? new Date(date).toLocaleDateString("en-GB") : ''} • {time}
               </Text>
               <Text
                 style={{
@@ -600,7 +605,7 @@ export default function PaymentScreen() {
                     color: "#00FF88",
                   }}
                 >
-                  ₦{parseFloat(total || 0).toLocaleString()}
+                  {formatCurrency(total || 0)}
                 </Text>
               </View>
             </View>

@@ -3,7 +3,7 @@
     "name": "pitchlink",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "https://i.postimg.cc/GHcfV4y7/Pitch-Link-Logo.png",
     "scheme": "pitchlink",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -11,12 +11,13 @@
       "supportsTablet": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "bundleIdentifier": "xyz.create.CreateExpoEnvironment"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "https://i.postimg.cc/GHcfV4y7/Pitch-Link-Logo.png",
+        "backgroundColor": "#000000"
       },
       "permissions": [
         "android.permission.RECORD_AUDIO",
@@ -34,9 +35,10 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain"
+          "image": "https://i.postimg.cc/GHcfV4y7/Pitch-Link-Logo.png",
+          "imageWidth": "100%",
+          "resizeMode": "cover",
+          "backgroundColor": "#000000"
         }
       ],
       "expo-audio",
@@ -52,10 +54,6 @@
       "expo-secure-store",
       "expo-web-browser"
     ],
-    "web": {
-      "bundler": "metro",
-      "favicon": "./assets/images/favicon.png"
-    },
     "experiments": {
       "typedRoutes": true
     },

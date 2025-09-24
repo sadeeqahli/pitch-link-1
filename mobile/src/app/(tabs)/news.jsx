@@ -535,7 +535,7 @@ Would you like to read the full article?`,
       {/* Header */}
       <View
         style={{
-          paddingTop: 16,
+          paddingTop: insets.top + 16,
           paddingHorizontal: 20,
           paddingBottom: 20,
           backgroundColor: isDark ? "#0A0A0A" : "#F8F9FA",
@@ -604,7 +604,8 @@ Would you like to read the full article?`,
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{
-          paddingBottom: 100,
+          paddingBottom: insets.bottom + 20,
+          paddingHorizontal: 20,
         }}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -639,7 +640,7 @@ Would you like to read the full article?`,
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingLeft: 20, paddingRight: 4 }}
+              contentContainerStyle={{ paddingRight: 20 }}
             >
               {liveMatches.map((match) => (
                 <TouchableOpacity
@@ -822,7 +823,7 @@ Would you like to read the full article?`,
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingLeft: 20, paddingRight: 4 }}
+            contentContainerStyle={{ paddingRight: 20 }}
           >
             {(displayContent.liveScores || liveScores).map(renderLiveScore)}
           </ScrollView>

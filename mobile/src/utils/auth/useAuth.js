@@ -76,10 +76,14 @@ export const useAuth = () => {
   const initiate = useCallback(async () => {
     try {
       const storedAuth = await SecureStore.getItemAsync(authKey);
+      console.log('Auth data from SecureStore:', storedAuth);
+      const parsedAuth = storedAuth ? JSON.parse(storedAuth) : null;
+      console.log('Parsed auth data:', parsedAuth);
       useAuthStore.setState({
-        auth: storedAuth ? JSON.parse(storedAuth) : null,
+        auth: parsedAuth,
         isReady: true,
       });
+      console.log('Auth store updated with:', parsedAuth);
     } catch (error) {
       console.log('Error loading auth:', error);
       useAuthStore.setState({
@@ -95,7 +99,13 @@ export const useAuth = () => {
 
   const signIn = useCallback(async (credentials) => {
     try {
+      console.log('Attempting sign in with credentials:', credentials);
+      if (!credentials) {
+        console.log('No credentials provided, throwing error');
+        throw new Error('Credentials object is required');
+      }
       if (!credentials?.email || !credentials?.password) {
+        console.log('Email or password missing from credentials');
         throw new Error('Email and password are required');
       }
 
@@ -104,9 +114,11 @@ export const useAuth = () => {
       
       // Get existing users
       const users = await getMockUsers();
+      console.log('Existing users:', users);
       
       // Find user by email
       const user = users.find(u => u.email.toLowerCase() === credentials.email.toLowerCase());
+      console.log('Found user:', user);
       
       if (!user) {
         throw new Error('Account not found. Please sign up first.');
@@ -127,12 +139,15 @@ export const useAuth = () => {
         jwt: 'mock-jwt-token-' + Date.now()
       };
       
+      console.log('Sign in successful, auth data:', authData);
+      
       // Save to secure store
       await SecureStore.setItemAsync(authKey, JSON.stringify(authData));
       setAuth(authData);
       
       return authData;
     } catch (error) {
+      console.log('Sign in error:', error.message);
       throw error;
     }
   }, [setAuth]);
@@ -303,6 +318,7 @@ export const useAuth = () => {
 
   const signUp = useCallback(async (userData) => {
     try {
+      console.log('Attempting sign up with data:', userData);
       if (!userData?.email || !userData?.password || !userData?.name) {
         throw new Error('Email, password, and name are required');
       }
@@ -312,9 +328,11 @@ export const useAuth = () => {
       
       // Get existing users
       const users = await getMockUsers();
+      console.log('Existing users:', users);
       
       // Check if user already exists
       const existingUser = users.find(u => u.email.toLowerCase() === userData.email.toLowerCase());
+      console.log('Existing user found:', existingUser);
       
       if (existingUser) {
         throw new Error('An account with this email already exists');
@@ -342,12 +360,15 @@ export const useAuth = () => {
         jwt: 'mock-jwt-token-' + Date.now()
       };
       
+      console.log('Sign up successful, auth data:', authData);
+      
       // Save to secure store
       await SecureStore.setItemAsync(authKey, JSON.stringify(authData));
       setAuth(authData);
       
       return authData;
     } catch (error) {
+      console.log('Sign up error:', error.message);
       throw error;
     }
   }, [setAuth]);

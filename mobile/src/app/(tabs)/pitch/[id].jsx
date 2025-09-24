@@ -468,7 +468,7 @@ export default function PitchDetailsScreen() {
                   color: "#00FF88",
                 }}
               >
-                {formatCurrency(pricing.total)}
+                {formatCurrency(pitch.basePricePerHour)}
               </Text>
               <Text
                 style={{
@@ -478,7 +478,7 @@ export default function PitchDetailsScreen() {
                   marginLeft: 8,
                 }}
               >
-                for {selectedDuration} hour{selectedDuration > 1 ? 's' : ''}
+                per hour
               </Text>
             </View>
             
@@ -668,6 +668,17 @@ export default function PitchDetailsScreen() {
                 const isSelected = selectedDuration === duration;
                 const isDisabled = selectedTime && !selectedTime.canExtend && duration > 1;
                 
+                // Calculate end time based on start time and duration
+                let timeInterval = `${duration}h`;
+                if (selectedTime && selectedTime.time) {
+                  const timeParts = selectedTime.time.split(':');
+                  const startHour = parseInt(timeParts[0]);
+                  const startMinute = parseInt(timeParts[1] || '0');
+                  const endHour = startHour + duration;
+                  const endTime = `${endHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}`;
+                  timeInterval = `${selectedTime.time}-${endTime}`;
+                }
+                
                 return (
                   <TouchableOpacity
                     key={duration}
@@ -707,7 +718,7 @@ export default function PitchDetailsScreen() {
                               : "#000000",
                         }}
                       >
-                        {duration}h
+                        {timeInterval}
                       </Text>
                     </View>
                     

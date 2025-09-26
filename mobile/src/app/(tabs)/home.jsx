@@ -11,7 +11,7 @@ import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
   MapPin,
@@ -29,6 +29,7 @@ import {
   Inter_600SemiBold,
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
+import { usePitches } from "@/hooks/useConvex";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -52,11 +53,39 @@ export default function HomeScreen() {
     Inter_700Bold,
   });
 
+  // Use Convex to fetch real pitch data
+  const { pitches: convexPitches, error, isLoading } = usePitches();
+
+  useEffect(() => {
+    console.log('Convex pitches data:', convexPitches);
+    console.log('Convex error:', error);
+    console.log('Convex loading:', isLoading);
+    
+    if (convexPitches) {
+      console.log('Fetched pitches from Convex:', convexPitches);
+    }
+    if (error) {
+      console.error('Error fetching pitches:', error);
+    }
+  }, [convexPitches, error, isLoading]);
+
   if (!fontsLoaded) {
     return null;
   }
 
-  const nearbyPitches = [
+  // Transform Convex pitch data to match the expected format
+  // Use mock data if Convex data is not available or is an empty array
+  const nearbyPitches = convexPitches && convexPitches.length > 0 ? convexPitches.map(pitch => ({
+    id: pitch._id,
+    name: pitch.name,
+    image: pitch.images && pitch.images.length > 0 ? pitch.images[0] : "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&h=600&fit=crop",
+    rating: pitch.rating,
+    distance: "0.5 km", // This would come from a location service in a real app
+    price: `₦${pitch.pricePerHour.toLocaleString()}/hour`,
+    available: true, // This would come from availability data in a real app
+    type: `${pitch.capacity}-a-side`,
+  })) : [
+    // Fallback to mock data if Convex data is not available
     {
       id: 1,
       name: "Greenfield Stadium",
@@ -92,7 +121,18 @@ export default function HomeScreen() {
     },
   ];
 
-  const recommendedPitches = [
+  const recommendedPitches = convexPitches && convexPitches.length > 0 ? convexPitches.map(pitch => ({
+    id: pitch._id,
+    name: pitch.name,
+    image: pitch.images && pitch.images.length > 0 ? pitch.images[0] : "https://images.unsplash.com/photo-1459865264687-595d652de67e?w=800&h=600&fit=crop",
+    rating: pitch.rating,
+    location: pitch.location,
+    price: `₦${pitch.pricePerHour.toLocaleString()}/hour`,
+    features: pitch.amenities || [],
+    type: `${pitch.capacity}-a-side`,
+    available: true,
+  })) : [
+    // Fallback to mock data if Convex data is not available
     {
       id: 4,
       name: "Elite Football Academy",

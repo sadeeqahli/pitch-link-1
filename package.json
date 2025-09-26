@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "flutterwave-react-native": "^1.0.4",
+    "react-native-webview": "^13.16.0"
+  }
+}

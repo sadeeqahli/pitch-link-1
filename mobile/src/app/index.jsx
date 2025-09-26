@@ -1,14 +1,12 @@
 import { Redirect } from "expo-router";
 import { useEffect, useState } from "react";
 import * as SecureStore from "expo-secure-store";
-import { useAuth } from "@/utils/auth/useAuth";
 
 const ONBOARDING_KEY = 'hasCompletedOnboarding';
 
 export default function Index() {
   const [isLoading, setIsLoading] = useState(true);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
-  const { isAuthenticated, isReady } = useAuth();
 
   useEffect(() => {
     const checkOnboardingStatus = async () => {
@@ -27,13 +25,11 @@ export default function Index() {
       }
     };
 
-    if (isReady) {
-      checkOnboardingStatus();
-    }
-  }, [isReady]);
+    checkOnboardingStatus();
+  }, []);
 
   // Show loading while checking status
-  if (!isReady || isLoading) {
+  if (isLoading) {
     return null;
   }
 
@@ -43,13 +39,8 @@ export default function Index() {
     return <Redirect href="/onboarding" />;
   }
 
-  // If user completed onboarding but not authenticated, show auth
-  if (!isAuthenticated) {
-    console.log('Redirecting to auth - isAuthenticated:', isAuthenticated);
-    return <Redirect href="/auth" />;
-  }
-
-  // If user is authenticated, go to main app
-  console.log('Redirecting to home - isAuthenticated:', isAuthenticated);
+  // For now, we'll redirect to the main app since we can't check auth status here
+  // The proper auth check will happen in the tabs layout
+  console.log('Redirecting to home - skipping auth check in index');
   return <Redirect href="/(tabs)/home" />;
 }

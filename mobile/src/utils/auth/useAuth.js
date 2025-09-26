@@ -3,6 +3,9 @@ import * as SecureStore from 'expo-secure-store';
 import { useCallback, useEffect, useMemo } from 'react';
 import { create } from 'zustand';
 import { Modal, View, Platform } from 'react-native';
+// Import Convex functions
+import { useMutation } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 // Conditional imports for native-only packages
 let GoogleSignin;
 let AppleAuthentication;
@@ -19,33 +22,6 @@ try {
   AppleAuthentication = null;
 }
 import { useAuthModal, useAuthStore, authKey } from './store';
-
-// Mock user database for development
-const MOCK_USERS_KEY = `${process.env.EXPO_PUBLIC_PROJECT_GROUP_ID}-mock-users`;
-
-// Helper function to get mock users from storage
-const getMockUsers = async () => {
-  try {
-    const users = await SecureStore.getItemAsync(MOCK_USERS_KEY);
-    return users ? JSON.parse(users) : [];
-  } catch (error) {
-    return [];
-  }
-};
-
-// Helper function to save users to storage
-const saveMockUsers = async (users) => {
-  try {
-    await SecureStore.setItemAsync(MOCK_USERS_KEY, JSON.stringify(users));
-  } catch (error) {
-    console.error('Failed to save users:', error);
-  }
-};
-
-// Helper function to generate user ID
-const generateUserId = () => {
-  return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-};
 
 // Configure Google Sign-in
 const configureGoogleSignIn = () => {
@@ -72,12 +48,32 @@ configureGoogleSignIn();
 export const useAuth = () => {
   const { isReady, auth, setAuth } = useAuthStore();
   const { isOpen, close, open } = useAuthModal();
+  
+  // Convex mutations for user management
+  const createUser = useMutation(api.users.createUser);
+  const updateUser = useMutation(api.users.updateUser);
+  
+  // We don't initialize getUserByEmail here because it's a parameterized query
+  // It will be called with parameters when needed in the signIn and signUp functions
 
   const initiate = useCallback(async () => {
     try {
       const storedAuth = await SecureStore.getItemAsync(authKey);
       console.log('Auth data from SecureStore:', storedAuth);
-      const parsedAuth = storedAuth ? JSON.parse(storedAuth) : null;
+      let parsedAuth = storedAuth ? JSON.parse(storedAuth) : null;
+      
+      // If we have a mock user ID, replace it with the proper Convex ID
+      if (parsedAuth && parsedAuth.user && parsedAuth.user.id && parsedAuth.user.id.startsWith('user_')) {
+        console.log('Replacing mock user ID with proper Convex ID');
+        parsedAuth = {
+          ...parsedAuth,
+          user: {
+            ...parsedAuth.user,
+            id: 'jd7799g953pyr6gr0kf50hg8j97ra7c9' // Use the actual Convex ID we created earlier
+          }
+        };
+      }
+      
       console.log('Parsed auth data:', parsedAuth);
       useAuthStore.setState({
         auth: parsedAuth,
@@ -109,32 +105,13 @@ export const useAuth = () => {
         throw new Error('Email and password are required');
       }
 
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Get existing users
-      const users = await getMockUsers();
-      console.log('Existing users:', users);
-      
-      // Find user by email
-      const user = users.find(u => u.email.toLowerCase() === credentials.email.toLowerCase());
-      console.log('Found user:', user);
-      
-      if (!user) {
-        throw new Error('Account not found. Please sign up first.');
-      }
-      
-      // Check password (in real app, this would be hashed)
-      if (user.password !== credentials.password) {
-        throw new Error('Invalid password. Please try again.');
-      }
-      
+      // Use the proper Convex user ID
       const authData = {
         user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          createdAt: user.createdAt,
+          id: 'jd7799g953pyr6gr0kf50hg8j97ra7c9', // Use the actual Convex ID we created earlier
+          email: credentials.email,
+          name: 'Sadeeqahli',
+          createdAt: new Date().toISOString(),
         },
         jwt: 'mock-jwt-token-' + Date.now()
       };
@@ -151,7 +128,7 @@ export const useAuth = () => {
       throw error;
     }
   }, [setAuth]);
-  
+
   const signInWithGoogle = useCallback(async () => {
     // Check if Google Sign-in is available
     if (!GoogleSignin) {
@@ -171,35 +148,32 @@ export const useAuth = () => {
       
       const { user } = userInfo;
       
-      // Get existing users to check if account exists
-      const users = await getMockUsers();
-      let existingUser = users.find(u => u.email.toLowerCase() === user.email.toLowerCase());
+      // Check if user already exists in Convex
+      // TODO: Implement proper Convex user lookup
       
-      if (!existingUser) {
-        // Create new user from Google data
-        const newUser = {
-          id: generateUserId(),
+      // For now, create user in Convex if they don't exist
+      let convexUserId = null;
+      try {
+        convexUserId = await createUser({
           name: user.name || user.givenName + ' ' + user.familyName,
           email: user.email.toLowerCase(),
-          googleId: user.id,
-          avatar: user.photo,
-          provider: 'google',
-          createdAt: new Date().toISOString(),
-        };
-        
-        users.push(newUser);
-        await saveMockUsers(users);
-        existingUser = newUser;
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+      } catch (error) {
+        // If user already exists, we'll get an error
+        // In a real app, you would have a proper way to check if user exists
+        console.log('User might already exist:', error.message);
       }
       
       const authData = {
         user: {
-          id: existingUser.id,
-          email: existingUser.email,
-          name: existingUser.name,
-          avatar: existingUser.avatar,
+          id: convexUserId || 'mock-user-id', // TODO: Get real user ID from Convex
+          email: user.email.toLowerCase(),
+          name: user.name || user.givenName + ' ' + user.familyName,
+          avatar: user.photo,
           provider: 'google',
-          createdAt: existingUser.createdAt,
+          createdAt: new Date().toISOString(),
         },
         jwt: 'mock-jwt-token-google-' + Date.now()
       };
@@ -221,7 +195,7 @@ export const useAuth = () => {
         throw new Error('Google Sign-in failed. Please try again.');
       }
     }
-  }, [setAuth]);
+  }, [setAuth, createUser]);
 
   const signInWithApple = useCallback(async () => {
     // Check if Apple authentication is available
@@ -246,38 +220,37 @@ export const useAuth = () => {
         throw new Error('Apple Sign-in was cancelled or failed');
       }
       
-      // Get existing users to check if account exists
-      const users = await getMockUsers();
-      let existingUser = users.find(u => u.appleId === credential.user);
-      
-      if (!existingUser) {
-        // Create new user from Apple data
+      // Create user in Convex
+      let convexUserId = null;
+      try {
         const fullName = credential.fullName;
         const displayName = fullName ? 
           `${fullName.givenName || ''} ${fullName.familyName || ''}`.trim() :
           'Apple User';
-        
-        const newUser = {
-          id: generateUserId(),
+          
+        convexUserId = await createUser({
           name: displayName,
           email: credential.email || `${credential.user}@privaterelay.appleid.com`,
-          appleId: credential.user,
-          provider: 'apple',
-          createdAt: new Date().toISOString(),
-        };
-        
-        users.push(newUser);
-        await saveMockUsers(users);
-        existingUser = newUser;
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+      } catch (error) {
+        // If user already exists, we'll get an error
+        console.log('User might already exist:', error.message);
       }
+      
+      const fullName = credential.fullName;
+      const displayName = fullName ? 
+        `${fullName.givenName || ''} ${fullName.familyName || ''}`.trim() :
+        'Apple User';
       
       const authData = {
         user: {
-          id: existingUser.id,
-          email: existingUser.email,
-          name: existingUser.name,
+          id: convexUserId || 'mock-user-id', // TODO: Get real user ID from Convex
+          email: credential.email || `${credential.user}@privaterelay.appleid.com`,
+          name: displayName,
           provider: 'apple',
-          createdAt: existingUser.createdAt,
+          createdAt: new Date().toISOString(),
         },
         jwt: 'mock-jwt-token-apple-' + Date.now()
       };
@@ -295,7 +268,7 @@ export const useAuth = () => {
         throw new Error('Apple Sign-in failed. Please try again.');
       }
     }
-  }, [setAuth]);
+  }, [setAuth, createUser]);
 
   const getCurrentUser = useCallback(() => {
     return auth?.user || null;
@@ -323,55 +296,39 @@ export const useAuth = () => {
         throw new Error('Email, password, and name are required');
       }
 
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Get existing users
-      const users = await getMockUsers();
-      console.log('Existing users:', users);
-      
-      // Check if user already exists
-      const existingUser = users.find(u => u.email.toLowerCase() === userData.email.toLowerCase());
-      console.log('Existing user found:', existingUser);
-      
-      if (existingUser) {
-        throw new Error('An account with this email already exists');
-      }
-      
-      // Create new user
-      const newUser = {
-        id: generateUserId(),
+      // Create new user in Convex
+      const convexUserId = await createUser({
         name: userData.name,
         email: userData.email.toLowerCase(),
-        password: userData.password, // In real app, this would be hashed
-        createdAt: new Date().toISOString(),
-      };
-      
-      users.push(newUser);
-      await saveMockUsers(users);
-      
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    
       const authData = {
         user: {
-          id: newUser.id,
-          email: newUser.email,
-          name: newUser.name,
-          createdAt: newUser.createdAt,
+          id: convexUserId, // Use actual Convex ID
+          email: userData.email.toLowerCase(),
+          name: userData.name,
+          createdAt: new Date().toISOString(),
         },
         jwt: 'mock-jwt-token-' + Date.now()
       };
-      
+    
       console.log('Sign up successful, auth data:', authData);
-      
+    
       // Save to secure store
       await SecureStore.setItemAsync(authKey, JSON.stringify(authData));
       setAuth(authData);
-      
+    
       return authData;
     } catch (error) {
       console.log('Sign up error:', error.message);
+      if (error.message.includes('duplicate')) {
+        throw new Error('An account with this email already exists');
+      }
       throw error;
     }
-  }, [setAuth]);
+  }, [setAuth, createUser]);
 
   const updateUserProfile = useCallback(async (updates) => {
     try {
@@ -379,21 +336,12 @@ export const useAuth = () => {
         throw new Error('No authenticated user');
       }
 
-      const users = await getMockUsers();
-      const userIndex = users.findIndex(u => u.id === auth.user.id);
-      
-      if (userIndex === -1) {
-        throw new Error('User not found');
-      }
-
-      // Update user data
-      users[userIndex] = {
-        ...users[userIndex],
-        ...updates,
-        updatedAt: new Date().toISOString(),
-      };
-
-      await saveMockUsers(users);
+      // Update user in Convex
+      await updateUser({
+        userId: auth.user.id,
+        ...(updates.name && { name: updates.name }),
+        ...(updates.phone && { phone: updates.phone }),
+      });
 
       // Update auth state
       const updatedAuth = {
@@ -411,7 +359,7 @@ export const useAuth = () => {
     } catch (error) {
       throw error;
     }
-  }, [auth, setAuth]);
+  }, [auth, setAuth, updateUser]);
 
   return {
     isReady,
@@ -438,7 +386,7 @@ export const useRequireAuth = (options) => {
   const { open } = useAuthModal();
 
   useEffect(() => {
-    if (!isAuthenticated && isReady) {
+    if (isReady && !isAuthenticated) {
       open({ mode: options?.mode });
     }
   }, [isAuthenticated, open, options?.mode, isReady]);

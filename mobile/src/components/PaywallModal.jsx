@@ -542,7 +542,7 @@ export default function PaywallModal({
                     marginLeft: 8,
                   }}
                 >
-                  Secure payment powered by Stripe
+                  Secure payment powered by Flutterwave
                 </Text>
               </View>
               

@@ -1,4 +1,7 @@
 import { create } from 'zustand';
+import { useQuery } from "convex/react";
+// Import Convex APIs when available
+// import { api } from "../../../convex/_generated/api";
 
 /**
  * Content Store - Manages news articles and live streaming content
@@ -16,6 +19,17 @@ export const useContentStore = create((set, get) => ({
   loadContent: async () => {
     try {
       set({ isLoading: true, error: null });
+      
+      // Try to load from Convex first
+      try {
+        // In a real implementation, you would fetch from Convex here
+        console.log('Would fetch content from Convex in a real implementation');
+        // const articles = await fetchFromConvex(api.content.getArticles);
+        // const liveMatches = await fetchFromConvex(api.content.getLiveMatches);
+        // const liveScores = await fetchFromConvex(api.content.getLiveScores);
+      } catch (convexError) {
+        console.log('Could not fetch from Convex, using mock data:', convexError.message);
+      }
       
       // Mock content data - in production this would come from API
       const mockArticles = [

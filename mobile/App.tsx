@@ -6,6 +6,8 @@ import './src/__create/polyfills';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Toaster } from 'sonner-native';
 import './global.css';
+import { ConvexProvider } from "convex/react";
+import convex from './src/utils/convex';
 
 const GlobalErrorReporter = () => {
   return null;
@@ -25,7 +27,9 @@ const Wrapper = memo(() => {
           },
         }}
       >
-        <App />
+        <ConvexProvider client={convex}>
+          <App />
+        </ConvexProvider>
         <GlobalErrorReporter />
         <Toaster />
       </SafeAreaProvider>

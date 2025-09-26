@@ -1,4 +1,5 @@
 import { Tabs, Redirect } from "expo-router";
+import React, { useState } from "react";
 import { useColorScheme } from "react-native";
 import { Home, Search, Calendar, Newspaper, User } from "lucide-react-native";
 import { useAuth } from "@/utils/auth/useAuth";
@@ -6,17 +7,17 @@ import { useAuth } from "@/utils/auth/useAuth";
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
-  const { isReady, auth } = useAuth();
+  const { isReady, isAuthenticated } = useAuth();
 
   // Show loading while auth is initializing
   if (!isReady) {
     return null;
   }
 
-  // Skip authentication check for development
-  // if (!auth) {
-  //   return <Redirect href="/auth" />;
-  // }
+  // Check authentication and redirect if not authenticated
+  if (!isAuthenticated) {
+    return <Redirect href="/auth" />;
+  }
 
   return (
     <Tabs
@@ -26,8 +27,10 @@ export default function TabLayout() {
           backgroundColor: isDark ? "#1A1A1A" : "#FFFFFF",
           borderTopWidth: 1,
           borderTopColor: isDark ? "#333333" : "#EAEAEA",
-          paddingTop: 8,
-          height: 90,
+          paddingTop: 12,
+          paddingBottom: 20,
+          height: 70,
+          paddingHorizontal: 25,
         },
         tabBarActiveTintColor: "#00FF88",
         tabBarInactiveTintColor: isDark ? "#9CA3AF" : "#9B9B9B",
@@ -81,19 +84,19 @@ export default function TabLayout() {
       <Tabs.Screen
         name="pitch/[id]"
         options={{
-          href: null,
+          tabBarButton: () => null, // This completely hides the tab
         }}
       />
       <Tabs.Screen
         name="booking-summary"
         options={{
-          href: null,
+          tabBarButton: () => null, // This completely hides the tab
         }}
       />
       <Tabs.Screen
         name="payment"
         options={{
-          href: null,
+          tabBarButton: () => null, // This completely hides the tab
         }}
       />
     </Tabs>

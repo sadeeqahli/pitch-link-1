@@ -38,6 +38,7 @@ import {
 } from "@expo-google-fonts/inter";
 import { calculatePricing } from "@/utils/booking/store";
 import { useUserStore } from "@/utils/auth/userStore";
+import { useGetPitch } from "@/hooks/useConvex";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -48,6 +49,9 @@ export default function PitchDetailsScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   const scrollViewRef = useRef(null);
+
+  // Convex hooks
+  const pitchData = useGetPitch(id);
 
   // All hooks must be called before any conditional returns
   const [fontsLoaded] = useFonts({
@@ -63,9 +67,11 @@ export default function PitchDetailsScreen() {
   const [selectedDuration, setSelectedDuration] = useState(1); // Default to 1 hour
   const [availableTimeSlots, setAvailableTimeSlots] = useState([]);
   const [isFirstTimeUser, setIsFirstTimeUser] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [localPitchData, setLocalPitchData] = useState(null);
   
   // Get user booking status
-  const { checkFirstTimeBookingEligibility, initializeUserProfile } = useUserStore();
+  const { checkFirstTimeBookingEligibility, initializeUserProfile, user } = useUserStore();
   
   // Memoize the initialization function
   const initializeUser = useCallback(async () => {
@@ -79,6 +85,48 @@ export default function PitchDetailsScreen() {
     initializeUser();
   }, [initializeUser]);
 
+  // Set pitch data from Convex query result
+  useEffect(() => {
+    if (pitchData && pitchData !== "undefined") {
+      // Transform Convex pitch data to match the expected format
+      const transformedPitch = {
+        id: pitchData._id,
+        name: pitchData.name,
+        rating: pitchData.rating,
+        reviews: pitchData.reviewsCount || 0,
+        location: pitchData.location,
+        type: `${pitchData.capacity}-a-side`,
+        surface: pitchData.surfaceType,
+        distance: "2.5 km", // This would come from a location service in a real app
+        basePricePerHour: pitchData.pricePerHour,
+        description: `Professional ${pitchData.capacity}-a-side football pitch with ${pitchData.amenities ? pitchData.amenities.join(', ') : 'great facilities'}.`,
+        amenities: [
+          { icon: Wifi, name: "WiFi", description: "Free high-speed internet" },
+          { icon: Car, name: "Parking", description: "Ample parking space" },
+          { icon: Shirt, name: "Jerseys", description: "Available for rent" },
+          { icon: Users, name: "Changing Rooms", description: "Clean facilities" },
+        ],
+        images: pitchData.images || [
+          "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&h=600&fit=crop",
+          "https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=800&h=600&fit=crop",
+          "https://images.unsplash.com/photo-1459865264687-595d652de67e?w=800&h=600&fit=crop",
+        ],
+        owner: {
+          name: "Pitch Manager",
+          rating: 4.9,
+        },
+      };
+      setLocalPitchData(transformedPitch);
+      setLoading(false);
+    } else if (pitchData === null && id) {
+      // Only show error if we have an ID but no data
+      console.error("Pitch not found for ID:", id);
+      setLoading(false);
+    } else if (pitchData === "undefined") {
+      setLoading(false);
+    }
+  }, [pitchData, id]);
+
   // Memoize time slots generation
   const generateTimeSlots = useCallback(() => {
     const slots = [];
@@ -86,18 +134,17 @@ export default function PitchDetailsScreen() {
       const timeString = `${hour.toString().padStart(2, "0")}:00`;
       const isAvailable = Math.random() > 0.3; // Mock availability
       
-      // Check if this slot can accommodate the selected duration
-      const canAccommodateDuration = hour + selectedDuration <= 21;
-      
+      // Each slot represents a 1-hour time block
+      // For 2-hour bookings, users must select two consecutive 1-hour slots
       slots.push({
         time: timeString,
         hour: hour,
-        available: isAvailable && canAccommodateDuration,
-        canExtend: canAccommodateDuration,
+        available: isAvailable,
+        canExtend: hour + 1 <= 21, // Can extend to next hour for 2-hour booking
       });
     }
     return slots;
-  }, [selectedDuration]);
+  }, []);
   
   // Update available time slots when duration changes
   useEffect(() => {
@@ -110,56 +157,31 @@ export default function PitchDetailsScreen() {
     return null;
   }
 
-  // Mock data - in a real app this would come from an API
-  const pitchData = {
-    1: {
-      name: "Greenfield Stadium",
-      images: [
-        "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&h=600&fit=crop",
-        "https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=800&h=600&fit=crop",
-        "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=800&h=600&fit=crop",
-      ],
-      rating: 4.8,
-      reviews: 124,
-      location: "123 Football Street, London SW1A 1AA",
-      distance: "0.5 km",
-      price: "₦12,500/hour",
-      basePricePerHour: 12500,
-      type: "5-a-side",
-      surface: "Artificial Grass",
-      description:
-        "Premium 5-a-side football pitch with floodlights and changing facilities. Perfect for evening games with friends or competitive matches. Recently renovated with high-quality artificial grass surface.",
-      amenities: [
-        {
-          name: "Floodlit",
-          icon: Clock,
-          description: "LED floodlights for evening games",
-        },
-        {
-          name: "Parking",
-          icon: Car,
-          description: "Free on-site parking for 20 cars",
-        },
-        {
-          name: "Changing Rooms",
-          icon: Shirt,
-          description: "Clean changing rooms with lockers",
-        },
-        {
-          name: "Capacity",
-          icon: Users,
-          description: "Up to 12 players (5v5 + subs)",
-        },
-      ],
-      owner: {
-        name: "Sports Center London",
-        phone: "+44 20 1234 5678",
-        rating: 4.9,
-      },
-    },
-  };
+  // Show loading state while fetching data
+  if (loading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: isDark ? "#0A0A0A" : "#F8F9FA", justifyContent: "center", alignItems: "center" }}>
+        <Text style={{ color: isDark ? "#FFFFFF" : "#000000", fontSize: 18 }}>Loading pitch details...</Text>
+      </View>
+    );
+  }
 
-  const pitch = pitchData[id] || pitchData[1];
+  // Show error state if no pitch data
+  if (!localPitchData) {
+    return (
+      <View style={{ flex: 1, backgroundColor: isDark ? "#0A0A0A" : "#F8F9FA", justifyContent: "center", alignItems: "center" }}>
+        <Text style={{ color: isDark ? "#FFFFFF" : "#000000", fontSize: 18 }}>Pitch not found</Text>
+        <TouchableOpacity 
+          onPress={() => router.back()}
+          style={{ marginTop: 20, padding: 10, backgroundColor: "#00FF88", borderRadius: 8 }}
+        >
+          <Text style={{ color: "#000000", fontWeight: "bold" }}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const pitch = localPitchData;
   
   // Calculate dynamic pricing based on selected duration and first-time status
   const pricing = calculatePricing(pitch.basePricePerHour, selectedDuration, isFirstTimeUser);
@@ -189,23 +211,13 @@ export default function PitchDetailsScreen() {
   const getContiguousSlots = (startTime) => {
     if (!startTime) return [];
     
-    const startHour = parseInt(startTime.split(':')[0]);
-    const maxDuration = Math.min(3, 21 - startHour); // Max 3 hours or until 9 PM
-    
-    const contiguousSlots = [];
-    for (let duration = 1; duration <= maxDuration; duration++) {
-      const endHour = startHour + duration;
-      if (endHour <= 21) {
-        contiguousSlots.push(duration);
-      }
-    }
-    
-    return contiguousSlots;
+    // Only allow 1 hour and 2 hour bookings
+    return [1, 2];
   };
   
   const dates = generateDates();
   const timeSlots = availableTimeSlots;
-  const availableDurations = selectedTime ? getContiguousSlots(selectedTime.time) : [1, 2, 3];
+  const availableDurations = selectedTime ? getContiguousSlots(selectedTime.time) : [1, 2];
 
   const handleImageScroll = (event) => {
     const slideSize = screenWidth;
@@ -213,20 +225,26 @@ export default function PitchDetailsScreen() {
     setCurrentImageIndex(index);
   };
 
-  const handleBooking = () => {
-    if (selectedDate && selectedTime && selectedDuration) {
-      router.push({
-        pathname: "/(tabs)/booking-summary",
-        params: {
-          pitchId: id,
-          pitchName: pitch.name,
-          date: selectedDate.toISOString(),
-          time: selectedTime.time,
-          duration: selectedDuration.toString(),
-          basePricePerHour: pitch.basePricePerHour.toString(),
-          totalPrice: pricing.total.toString(),
-        },
-      });
+  const handleBooking = async () => {
+    if (selectedDate && selectedTime && selectedDuration && user) {
+      try {
+        // Navigate to booking summary
+        router.push({
+          pathname: "/(tabs)/booking-summary",
+          params: {
+            pitchId: id,
+            pitchName: pitch.name,
+            date: selectedDate.toISOString(),
+            time: selectedTime.time,
+            duration: selectedDuration.toString(),
+            basePricePerHour: pitch.basePricePerHour.toString(),
+            totalPrice: pricing.total.toString(),
+          },
+        });
+      } catch (error) {
+        console.error("Error creating booking:", error);
+        // Handle error appropriately in UI
+      }
     }
   };
 
@@ -666,23 +684,14 @@ export default function PitchDetailsScreen() {
               {availableDurations.map((duration) => {
                 const durationPricing = calculatePricing(pitch.basePricePerHour, duration, isFirstTimeUser);
                 const isSelected = selectedDuration === duration;
-                const isDisabled = selectedTime && !selectedTime.canExtend && duration > 1;
                 
-                // Calculate end time based on start time and duration
-                let timeInterval = `${duration}h`;
-                if (selectedTime && selectedTime.time) {
-                  const timeParts = selectedTime.time.split(':');
-                  const startHour = parseInt(timeParts[0]);
-                  const startMinute = parseInt(timeParts[1] || '0');
-                  const endHour = startHour + duration;
-                  const endTime = `${endHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}`;
-                  timeInterval = `${selectedTime.time}-${endTime}`;
-                }
+                // Show simple labels for durations
+                let durationLabel = `${duration}hr`;
                 
                 return (
                   <TouchableOpacity
                     key={duration}
-                    onPress={() => !isDisabled && setSelectedDuration(duration)}
+                    onPress={() => setSelectedDuration(duration)}
                     style={{
                       flex: 1,
                       backgroundColor: isSelected
@@ -700,9 +709,7 @@ export default function PitchDetailsScreen() {
                       shadowOpacity: isDark ? 0.3 : 0.1,
                       shadowRadius: 4,
                       elevation: 2,
-                      opacity: isDisabled ? 0.5 : 1,
                     }}
-                    disabled={isDisabled}
                   >
                     <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
                       <Timer size={20} color={isSelected ? "#000000" : "#00FF88"} />
@@ -718,7 +725,7 @@ export default function PitchDetailsScreen() {
                               : "#000000",
                         }}
                       >
-                        {timeInterval}
+                        {durationLabel}
                       </Text>
                     </View>
                     
@@ -1017,12 +1024,27 @@ export default function PitchDetailsScreen() {
                 {timeSlots.map((slot, index) => (
                   <TouchableOpacity
                     key={index}
-                    onPress={() => slot.available && setSelectedTime(slot)}
+                    onPress={() => {
+                      if (!slot.available) return;
+                      
+                      // Check if this slot can accommodate the selected duration
+                      if (selectedDuration === 2 && !slot.canExtend) {
+                        // Cannot select this slot for 2-hour booking
+                        return;
+                      }
+                      
+                      // If same slot is clicked again, deselect it
+                      if (selectedTime && selectedTime.time === slot.time) {
+                        setSelectedTime(null);
+                      } else {
+                        setSelectedTime(slot);
+                      }
+                    }}
                     style={{
                       backgroundColor:
                         selectedTime?.time === slot.time
                           ? "#00FF88"
-                          : slot.available
+                          : slot.available && (selectedDuration === 1 || slot.canExtend)
                             ? isDark
                               ? "#1E1E1E"
                               : "#FFFFFF"
@@ -1034,9 +1056,9 @@ export default function PitchDetailsScreen() {
                       margin: 6,
                       alignItems: "center",
                       minWidth: 80,
-                      opacity: slot.available ? 1 : 0.5,
+                      opacity: slot.available && (selectedDuration === 1 || slot.canExtend) ? 1 : 0.5,
                     }}
-                    disabled={!slot.available}
+                    disabled={!slot.available || (selectedDuration === 2 && !slot.canExtend)}
                   >
                     <Text
                       style={{
@@ -1051,6 +1073,24 @@ export default function PitchDetailsScreen() {
                       }}
                     >
                       {slot.time}
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        fontFamily: "Inter_400Regular",
+                        color:
+                          selectedTime?.time === slot.time
+                            ? "#000000"
+                            : isDark
+                              ? "#9CA3AF"
+                              : "#6B7280",
+                        marginTop: 2,
+                      }}
+                    >
+                      {/* Show combined time range when 2hr is selected */}
+                      {selectedDuration === 2 && slot.canExtend
+                        ? `${(slot.hour + selectedDuration).toString().padStart(2, '0')}:00`
+                        : `${(slot.hour + 1).toString().padStart(2, '0')}:00`}
                     </Text>
                   </TouchableOpacity>
                 ))}

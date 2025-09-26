@@ -1,9 +1,11 @@
-import { useAuth } from '@/utils/auth/useAuth';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useEffect } from 'react';
+// Import Convex provider
+import { ConvexProvider } from "convex/react";
+import convex from '@/utils/convex.ts';
 // Import debug utilities
 import '@/utils/dev/debugUtils';
 
@@ -21,29 +23,20 @@ const queryClient = new QueryClient({
 });
 
 export default function RootLayout() {
-  const { initiate, isReady } = useAuth();
-
   useEffect(() => {
-    initiate();
-  }, [initiate]);
-
-  useEffect(() => {
-    if (isReady) {
-      SplashScreen.hideAsync();
-    }
-  }, [isReady]);
-
-  if (!isReady) {
-    return null;
-  }
+    // Hide splash screen after app is loaded
+    SplashScreen.hideAsync();
+  }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
-          <Stack.Screen name="index" />
-        </Stack>
-      </GestureHandlerRootView>
-    </QueryClientProvider>
+    <ConvexProvider client={convex}>
+      <QueryClientProvider client={queryClient}>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
+            <Stack.Screen name="index" />
+          </Stack>
+        </GestureHandlerRootView>
+      </QueryClientProvider>
+    </ConvexProvider>
   );
 }

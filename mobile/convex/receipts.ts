@@ -1,5 +1,6 @@
 import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 
 // Create a new payment receipt
 export const createReceipt = mutation({
@@ -58,12 +59,11 @@ export const getReceipt = query({
 
 // Get receipts by user
 export const getReceiptsByUser = query({
-  args: { userId: v.optional(v.id("users")) },
+  args: { userId: v.id("users") },
   handler: async (ctx, args) => {
-    if (!args.userId) return [];
     return await ctx.db
       .query("receipts")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId!))
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .collect();
   },
 });

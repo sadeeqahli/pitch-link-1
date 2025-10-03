@@ -6,6 +6,7 @@ import {
   TextInput,
   useColorScheme,
   Modal,
+  Alert,
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -33,6 +34,10 @@ import {
   Inter_600SemiBold,
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
+import { usePitches } from "@/hooks/useConvex";
+import { useErrorStore } from "@/utils/errorHandling";
+import { useOfflineManager } from "@/utils/cacheStore";
+import MapComponent from "@/components/MapComponent";
 
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
@@ -55,88 +60,61 @@ export default function SearchScreen() {
     Inter_700Bold,
   });
 
+  // Use Convex to fetch real pitch data
+  const { pitches: convexPitches, error, isLoading } = usePitches();
+  const { addError } = useErrorStore();
+  const { 
+    isOnline, 
+    isCacheLoaded, 
+    pitches: cachedPitches, 
+    initOfflineManager, 
+    syncWithServer 
+  } = useOfflineManager();
+
   useEffect(() => {
     if (query) {
       setSearchText(query);
     }
-  }, [query]);
+    
+    if (error) {
+      console.error('Error fetching pitches:', error);
+      addError('NETWORK', 'Failed to load pitches. Please check your connection and try again.');
+    }
+  }, [query, error, addError]);
+  
+  // Initialize offline manager
+  useEffect(() => {
+    initOfflineManager();
+  }, [initOfflineManager]);
+  
+  // Sync data when online and have fresh data
+  useEffect(() => {
+    if (isOnline && convexPitches && convexPitches.length > 0) {
+      syncWithServer(convexPitches, null);
+    }
+  }, [isOnline, convexPitches, syncWithServer]);
+  
+  // Use cached data when offline or loading
+  const displayPitches = !isOnline || isLoading ? cachedPitches : convexPitches;
 
   if (!fontsLoaded) {
     return null;
   }
 
-  const allPitches = [
-    {
-      id: 1,
-      name: "Greenfield Stadium",
-      image:
-        "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&h=600&fit=crop",
-      rating: 4.8,
-      reviews: 124,
-      distance: "0.5 km",
-      price: "₦12,500/hour",
-      available: true,
-      amenities: ["Floodlit", "Parking", "Changing Rooms"],
-      type: "5-a-side",
-      surface: "Artificial Grass",
-    },
-    {
-      id: 2,
-      name: "City Sports Complex",
-      image:
-        "https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=800&h=600&fit=crop",
-      rating: 4.6,
-      reviews: 89,
-      distance: "1.2 km",
-      price: "₦15,000/hour",
-      available: true,
-      amenities: ["Floodlit", "Parking"],
-      type: "11-a-side",
-      surface: "Natural Grass",
-    },
-    {
-      id: 3,
-      name: "Riverside Football Ground",
-      image:
-        "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=800&h=600&fit=crop",
-      rating: 4.7,
-      reviews: 156,
-      distance: "2.1 km",
-      price: "₦10,000/hour",
-      available: false,
-      amenities: ["Parking", "Changing Rooms"],
-      type: "7-a-side",
-      surface: "Artificial Grass",
-    },
-    {
-      id: 4,
-      name: "Elite Football Academy",
-      image:
-        "https://images.unsplash.com/photo-1459865264687-595d652de67e?w=800&h=600&fit=crop",
-      rating: 4.9,
-      reviews: 203,
-      distance: "3.5 km",
-      price: "₦17,500/hour",
-      available: true,
-      amenities: ["Floodlit", "Parking", "Changing Rooms", "WiFi"],
-      type: "5-a-side",
-      surface: "Artificial Grass",
-    },
-    {
-      id: 5,
-      name: "Parkside Pitch",
-      image:
-        "https://images.unsplash.com/photo-1553778263-73a83bab9b0c?w=800&h=600&fit=crop",
-      rating: 4.5,
-      reviews: 67,
-      distance: "4.2 km",
-      price: "₦11,000/hour",
-      available: true,
-      amenities: ["Parking"],
-      type: "11-a-side",
-      surface: "Natural Grass",
-    },
-  ];
+  // Transform Convex pitch data to match the expected format
+  const allPitches = displayPitches && displayPitches.length > 0 ? displayPitches.map(pitch => ({
+    id: pitch._id,
+    name: pitch.name,
+    image: pitch.images && pitch.images.length > 0 ? pitch.images[0] : "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&h=600&fit=crop",
+    rating: pitch.rating,
+    reviews: pitch.reviewsCount || 0,
+    distance: "0.5 km", // This would come from a location service in a real app
+    price: `₦${pitch.pricePerHour.toLocaleString()}/hour`,
+    available: true, // This would come from availability data in a real app
+    amenities: pitch.amenities || [],
+    type: `${pitch.capacity}-a-side`,
+    surface: pitch.surfaceType,
+  })) : [];
 
   // Filter pitches based on search text
   const filteredPitches = allPitches.filter(pitch => {
@@ -150,6 +128,10 @@ export default function SearchScreen() {
   });
 
   const handlePitchPress = (pitchId) => {
+    router.push(`/(tabs)/pitch/${pitchId}`);
+  };
+
+  const handleMapPitchSelect = (pitchId) => {
     router.push(`/(tabs)/pitch/${pitchId}`);
   };
 
@@ -408,8 +390,8 @@ export default function SearchScreen() {
               flexDirection: "row",
               justifyContent: "space-between",
               alignItems: "center",
-            }}
-          >
+            }
+          }>
             <Text
               style={{
                 fontSize: 20,
@@ -787,28 +769,10 @@ export default function SearchScreen() {
 
       {/* Results */}
       {isMapView ? (
-        <View
-          style={{
-            flex: 1,
-            justifyContent: "center",
-            alignItems: "center",
-            backgroundColor: isDark ? "#1E1E1E" : "#FFFFFF",
-            margin: 20,
-            borderRadius: 16,
-          }}
-        >
-          <Map size={48} color={isDark ? "#9CA3AF" : "#6B7280"} />
-          <Text
-            style={{
-              marginTop: 16,
-              fontSize: 16,
-              fontFamily: "Inter_500Medium",
-              color: isDark ? "#9CA3AF" : "#6B7280",
-            }}
-          >
-            Map view coming soon
-          </Text>
-        </View>
+        <MapComponent 
+          onPitchSelect={handleMapPitchSelect}
+          style={{ flex: 1 }}
+        />
       ) : (
         <ScrollView
           style={{ flex: 1 }}
@@ -817,18 +781,50 @@ export default function SearchScreen() {
             paddingBottom: 100,
           }}
           showsVerticalScrollIndicator={false}
+          scrollEnabled={true}
+          keyboardShouldPersistTaps="handled"
         >
-          <Text
-            style={{
-              fontSize: 18,
-              fontFamily: "Inter_600SemiBold",
-              color: isDark ? "#FFFFFF" : "#000000",
-              marginBottom: 16,
-            }}
-          >
-            {filteredPitches.length} pitches found
-          </Text>
-          {filteredPitches.map(renderPitchCard)}
+          {/* Loading state */}
+          {isLoading && (
+            <View style={{ padding: 20, alignItems: "center" }}>
+              <Text style={{ color: isDark ? "#FFFFFF" : "#000000", fontSize: 16 }}>
+                Loading pitches...
+              </Text>
+            </View>
+          )}
+
+          {/* Error state */}
+          {error && (
+            <View style={{ padding: 20, alignItems: "center" }}>
+              <Text style={{ color: "#FF4444", fontSize: 16 }}>
+                Error loading pitches. Please try again.
+              </Text>
+            </View>
+          )}
+
+          {!isLoading && !error && (
+            <>
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontFamily: "Inter_600SemiBold",
+                  color: isDark ? "#FFFFFF" : "#000000",
+                  marginBottom: 16,
+                }}
+              >
+                {filteredPitches.length} pitches found
+              </Text>
+              {filteredPitches.length > 0 ? (
+                filteredPitches.map(renderPitchCard)
+              ) : (
+                <View style={{ alignItems: "center", paddingVertical: 40 }}>
+                  <Text style={{ color: isDark ? "#9CA3AF" : "#6B7280", fontSize: 16 }}>
+                    No pitches found matching your search
+                  </Text>
+                </View>
+              )}
+            </>
+          )}
         </ScrollView>
       )}
 

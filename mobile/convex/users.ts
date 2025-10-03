@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 
 // Get user by email
 export const getUserByEmail = query({
@@ -45,6 +46,22 @@ export const updateUser = mutation({
     await ctx.db.patch(args.userId, {
       ...(args.name && { name: args.name }),
       ...(args.phone && { phone: args.phone }),
+      updatedAt: now,
+    });
+    return args.userId;
+  },
+});
+
+// Save user push token
+export const saveUserPushToken = mutation({
+  args: {
+    userId: v.id("users"),
+    pushToken: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    await ctx.db.patch(args.userId, {
+      pushToken: args.pushToken,
       updatedAt: now,
     });
     return args.userId;

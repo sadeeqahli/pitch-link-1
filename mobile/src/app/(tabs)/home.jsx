@@ -6,6 +6,7 @@ import {
   TextInput,
   useColorScheme,
   Dimensions,
+  Alert,
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -30,6 +31,8 @@ import {
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
 import { usePitches } from "@/hooks/useConvex";
+import { useErrorStore } from "@/utils/errorHandling";
+import { useOfflineManager } from "@/utils/cacheStore";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -44,7 +47,6 @@ export default function HomeScreen() {
     pitchType: 'all', // 'all', '5-a-side', '7-a-side', '11-a-side'
     location: 'all', // 'all', 'nearby'
   });
-  const [filteredPitches, setFilteredPitches] = useState([]);
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -55,27 +57,47 @@ export default function HomeScreen() {
 
   // Use Convex to fetch real pitch data
   const { pitches: convexPitches, error, isLoading } = usePitches();
+  const { addError } = useErrorStore();
+  const { 
+    isOnline, 
+    isCacheLoaded, 
+    pitches: cachedPitches, 
+    initOfflineManager, 
+    syncWithServer 
+  } = useOfflineManager();
 
   useEffect(() => {
     console.log('Convex pitches data:', convexPitches);
     console.log('Convex error:', error);
     console.log('Convex loading:', isLoading);
     
-    if (convexPitches) {
-      console.log('Fetched pitches from Convex:', convexPitches);
-    }
     if (error) {
       console.error('Error fetching pitches:', error);
+      addError('NETWORK', 'Failed to load pitches. Please check your connection and try again.');
     }
-  }, [convexPitches, error, isLoading]);
-
+  }, [convexPitches, error, isLoading, addError]);
+  
+  // Initialize offline manager
+  useEffect(() => {
+    initOfflineManager();
+  }, [initOfflineManager]);
+  
+  // Sync data when online and have fresh data
+  useEffect(() => {
+    if (isOnline && convexPitches && convexPitches.length > 0) {
+      syncWithServer(convexPitches, null);
+    }
+  }, [isOnline, convexPitches, syncWithServer]);
+  
+  // Use cached data when offline or loading
+  const displayPitches = !isOnline || isLoading ? cachedPitches : convexPitches;
+  
   if (!fontsLoaded) {
     return null;
   }
 
   // Transform Convex pitch data to match the expected format
-  // Use mock data if Convex data is not available or is an empty array
-  const nearbyPitches = convexPitches && convexPitches.length > 0 ? convexPitches.map(pitch => ({
+  const nearbyPitches = displayPitches && displayPitches.length > 0 ? displayPitches.map(pitch => ({
     id: pitch._id,
     name: pitch.name,
     image: pitch.images && pitch.images.length > 0 ? pitch.images[0] : "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&h=600&fit=crop",
@@ -84,42 +106,7 @@ export default function HomeScreen() {
     price: `₦${pitch.pricePerHour.toLocaleString()}/hour`,
     available: true, // This would come from availability data in a real app
     type: `${pitch.capacity}-a-side`,
-  })) : [
-    // Fallback to mock data if Convex data is not available
-    {
-      id: 1,
-      name: "Greenfield Stadium",
-      image:
-        "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&h=600&fit=crop",
-      rating: 4.8,
-      distance: "0.5 km",
-      price: "₦12,500/hour",
-      available: true,
-      type: "5-a-side",
-    },
-    {
-      id: 2,
-      name: "City Sports Complex",
-      image:
-        "https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=800&h=600&fit=crop",
-      rating: 4.6,
-      distance: "1.2 km",
-      price: "₦15,000/hour",
-      available: true,
-      type: "11-a-side",
-    },
-    {
-      id: 3,
-      name: "Riverside Football Ground",
-      image:
-        "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=800&h=600&fit=crop",
-      rating: 4.7,
-      distance: "2.1 km",
-      price: "₦10,000/hour",
-      available: false,
-      type: "7-a-side",
-    },
-  ];
+  })) : [];
 
   const recommendedPitches = convexPitches && convexPitches.length > 0 ? convexPitches.map(pitch => ({
     id: pitch._id,
@@ -131,33 +118,7 @@ export default function HomeScreen() {
     features: pitch.amenities || [],
     type: `${pitch.capacity}-a-side`,
     available: true,
-  })) : [
-    // Fallback to mock data if Convex data is not available
-    {
-      id: 4,
-      name: "Elite Football Academy",
-      image:
-        "https://images.unsplash.com/photo-1459865264687-595d652de67e?w=800&h=600&fit=crop",
-      rating: 4.9,
-      location: "Central London",
-      price: "₦17,500/hour",
-      features: ["Floodlit", "Parking", "Changing Rooms"],
-      type: "5-a-side",
-      available: true,
-    },
-    {
-      id: 5,
-      name: "Parkside Pitch",
-      image:
-        "https://images.unsplash.com/photo-1553778263-73a83bab9b0c?w=800&h=600&fit=crop",
-      rating: 4.5,
-      location: "North London",
-      price: "₦11,000/hour",
-      features: ["Natural Grass", "Parking"],
-      type: "11-a-side",
-      available: true,
-    },
-  ];
+  })) : [];
 
   const handleSearch = () => {
     router.push({
@@ -547,7 +508,12 @@ export default function HomeScreen() {
       </View>
 
       {/* Content */}
-      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={{ flex: 1 }} 
+        showsVerticalScrollIndicator={false} 
+        scrollEnabled={true}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* News Link */}
         <TouchableOpacity
           onPress={() => router.push("/(tabs)/news")}
@@ -586,6 +552,24 @@ export default function HomeScreen() {
           <ArrowRight size={20} color="#00FF88" />
         </TouchableOpacity>
 
+        {/* Loading state */}
+        {isLoading && (
+          <View style={{ padding: 20, alignItems: "center" }}>
+            <Text style={{ color: isDark ? "#FFFFFF" : "#000000", fontSize: 16 }}>
+              Loading pitches...
+            </Text>
+          </View>
+        )}
+
+        {/* Error state */}
+        {error && (
+          <View style={{ padding: 20, alignItems: "center" }}>
+            <Text style={{ color: "#FF4444", fontSize: 16 }}>
+              Error loading pitches. Please try again.
+            </Text>
+          </View>
+        )}
+
         {/* Nearby Pitches */}
         <View style={{ marginBottom: 32 }}>
           <View
@@ -619,13 +603,21 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingLeft: 20, paddingRight: 4 }}
-          >
-            {getFilteredPitches(nearbyPitches).map(renderNearbyPitch)}
-          </ScrollView>
+          {nearbyPitches.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingLeft: 20, paddingRight: 4 }}
+            >
+              {getFilteredPitches(nearbyPitches).map(renderNearbyPitch)}
+            </ScrollView>
+          ) : (
+            <View style={{ paddingHorizontal: 20 }}>
+              <Text style={{ color: isDark ? "#9CA3AF" : "#6B7280", fontSize: 16, textAlign: "center" }}>
+                {isLoading ? "Loading pitches..." : "No pitches available at the moment"}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Recommended Pitches */}
@@ -649,7 +641,15 @@ export default function HomeScreen() {
             </Text>
           </View>
 
-          {getFilteredPitches(recommendedPitches).map(renderRecommendedPitch)}
+          {recommendedPitches.length > 0 ? (
+            getFilteredPitches(recommendedPitches).map(renderRecommendedPitch)
+          ) : (
+            <View style={{ alignItems: "center", paddingVertical: 20 }}>
+              <Text style={{ color: isDark ? "#9CA3AF" : "#6B7280", fontSize: 16 }}>
+                {isLoading ? "Loading pitches..." : "No recommended pitches available"}
+              </Text>
+            </View>
+          )}
         </View>
       </ScrollView>
     </View>

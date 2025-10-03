@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo } from 'react';
 import { create } from 'zustand';
 import { Modal, View, Platform } from 'react-native';
 // Import Convex functions
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 // Conditional imports for native-only packages
 let GoogleSignin;
@@ -22,6 +22,7 @@ try {
   AppleAuthentication = null;
 }
 import { useAuthModal, useAuthStore, authKey } from './store';
+import { registerForPushNotificationsAsync, savePushTokenToConvex } from '@/utils/pushNotifications';
 
 // Configure Google Sign-in
 const configureGoogleSignIn = () => {
@@ -52,27 +53,17 @@ export const useAuth = () => {
   // Convex mutations for user management
   const createUser = useMutation(api.users.createUser);
   const updateUser = useMutation(api.users.updateUser);
-  
-  // We don't initialize getUserByEmail here because it's a parameterized query
-  // It will be called with parameters when needed in the signIn and signUp functions
+  const saveUserPushToken = useMutation(api.users.saveUserPushToken);
+  // We'll use the direct query approach for getUserByEmail and authenticateUser since they require parameters
+  // Convex queries for user lookup (parameterized)
+  // We don't initialize getUserByEmail or authenticateUser here because they're parameterized queries
+  // They will be called with parameters when needed in the signIn and signUp functions
 
   const initiate = useCallback(async () => {
     try {
       const storedAuth = await SecureStore.getItemAsync(authKey);
       console.log('Auth data from SecureStore:', storedAuth);
-      let parsedAuth = storedAuth ? JSON.parse(storedAuth) : null;
-      
-      // If we have a mock user ID, replace it with the proper Convex ID
-      if (parsedAuth && parsedAuth.user && parsedAuth.user.id && parsedAuth.user.id.startsWith('user_')) {
-        console.log('Replacing mock user ID with proper Convex ID');
-        parsedAuth = {
-          ...parsedAuth,
-          user: {
-            ...parsedAuth.user,
-            id: 'jd7799g953pyr6gr0kf50hg8j97ra7c9' // Use the actual Convex ID we created earlier
-          }
-        };
-      }
+      const parsedAuth = storedAuth ? JSON.parse(storedAuth) : null;
       
       console.log('Parsed auth data:', parsedAuth);
       useAuthStore.setState({
@@ -105,24 +96,53 @@ export const useAuth = () => {
         throw new Error('Email and password are required');
       }
 
-      // Use the proper Convex user ID
-      const authData = {
-        user: {
-          id: 'jd7799g953pyr6gr0kf50hg8j97ra7c9', // Use the actual Convex ID we created earlier
-          email: credentials.email,
-          name: 'Sadeeqahli',
-          createdAt: new Date().toISOString(),
-        },
-        jwt: 'mock-jwt-token-' + Date.now()
-      };
-      
-      console.log('Sign in successful, auth data:', authData);
-      
-      // Save to secure store
-      await SecureStore.setItemAsync(authKey, JSON.stringify(authData));
-      setAuth(authData);
-      
-      return authData;
+      // Authenticate user with Convex
+      try {
+        // Use the Convex client to authenticate user
+        const convex = (await import('@/utils/convex')).default;
+        const authResult = await convex.query(api.users.authenticateUser, {
+          email: credentials.email.toLowerCase(),
+          password: credentials.password
+        });
+        
+        if (!authResult.success) {
+          throw new Error(authResult.error || 'Authentication failed');
+        }
+        
+        const userData = authResult.user;
+        
+        const authData = {
+          user: {
+            id: userData.id,
+            email: userData.email,
+            name: userData.name,
+            phone: userData.phone,
+            createdAt: new Date(userData.createdAt).toISOString(),
+          },
+          jwt: 'mock-jwt-token-' + Date.now()
+        };
+        
+        console.log('Sign in successful, auth data:', authData);
+        
+        // Save to secure store
+        await SecureStore.setItemAsync(authKey, JSON.stringify(authData));
+        setAuth(authData);
+        
+        // Register for push notifications
+        try {
+          const pushToken = await registerForPushNotificationsAsync();
+          if (pushToken && userData.id) {
+            await savePushTokenToConvex(userData.id, pushToken);
+          }
+        } catch (pushError) {
+          console.log('Error registering push notifications:', pushError);
+        }
+        
+        return authData;
+      } catch (convexError) {
+        console.log('Convex authentication error:', convexError.message);
+        throw new Error('Invalid email or password');
+      }
     } catch (error) {
       console.log('Sign in error:', error.message);
       throw error;
@@ -149,26 +169,51 @@ export const useAuth = () => {
       const { user } = userInfo;
       
       // Check if user already exists in Convex
-      // TODO: Implement proper Convex user lookup
-      
-      // For now, create user in Convex if they don't exist
-      let convexUserId = null;
+      let userData = null;
       try {
-        convexUserId = await createUser({
-          name: user.name || user.givenName + ' ' + user.familyName,
-          email: user.email.toLowerCase(),
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-        });
+        // Use the Convex client to check if user exists
+        // This is the correct way to call a query with parameters in an async function
+        const convex = (await import('@/utils/convex')).default;
+        userData = await convex.query(api.users.getUserByEmail, { email: user.email.toLowerCase() });
+        console.log('User found in Convex:', userData);
       } catch (error) {
-        // If user already exists, we'll get an error
-        // In a real app, you would have a proper way to check if user exists
-        console.log('User might already exist:', error.message);
+        console.log('Error checking user existence:', error.message);
+      }
+      
+      let convexUserId = null;
+      
+      // If user doesn't exist, create them
+      if (!userData) {
+        try {
+          convexUserId = await createUser({
+            name: user.name || user.givenName + ' ' + user.familyName,
+            email: user.email.toLowerCase(),
+          });
+          console.log('Created new user with ID:', convexUserId);
+        } catch (error) {
+          // If user already exists, we'll get an error due to unique constraint
+          console.log('User might already exist:', error.message);
+          // Try to fetch the user again
+          try {
+            const convex = (await import('@/utils/convex')).default;
+            const existingUser = await convex.query(api.users.getUserByEmail, { email: user.email.toLowerCase() });
+            if (existingUser) {
+              convexUserId = existingUser._id;
+            } else {
+              throw new Error('Failed to create or find user account');
+            }
+          } catch (fetchError) {
+            console.log('Error fetching existing user:', fetchError.message);
+            throw new Error('Failed to create user account');
+          }
+        }
+      } else {
+        convexUserId = userData._id;
       }
       
       const authData = {
         user: {
-          id: convexUserId || 'mock-user-id', // TODO: Get real user ID from Convex
+          id: convexUserId,
           email: user.email.toLowerCase(),
           name: user.name || user.givenName + ' ' + user.familyName,
           avatar: user.photo,
@@ -181,6 +226,16 @@ export const useAuth = () => {
       // Save to secure store
       await SecureStore.setItemAsync(authKey, JSON.stringify(authData));
       setAuth(authData);
+      
+      // Register for push notifications
+      try {
+        const pushToken = await registerForPushNotificationsAsync();
+        if (pushToken && convexUserId) {
+          await savePushTokenToConvex(convexUserId, pushToken);
+        }
+      } catch (pushError) {
+        console.log('Error registering push notifications:', pushError);
+      }
       
       return authData;
     } catch (error) {
@@ -220,23 +275,54 @@ export const useAuth = () => {
         throw new Error('Apple Sign-in was cancelled or failed');
       }
       
-      // Create user in Convex
-      let convexUserId = null;
+      // Check if user already exists in Convex
+      let userData = null;
       try {
-        const fullName = credential.fullName;
-        const displayName = fullName ? 
-          `${fullName.givenName || ''} ${fullName.familyName || ''}`.trim() :
-          'Apple User';
-          
-        convexUserId = await createUser({
-          name: displayName,
-          email: credential.email || `${credential.user}@privaterelay.appleid.com`,
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-        });
+        // Use the Convex client to check if user exists
+        const convex = (await import('@/utils/convex')).default;
+        const email = credential.email || `${credential.user}@privaterelay.appleid.com`;
+        userData = await convex.query(api.users.getUserByEmail, { email: email.toLowerCase() });
+        console.log('User found in Convex:', userData);
       } catch (error) {
-        // If user already exists, we'll get an error
-        console.log('User might already exist:', error.message);
+        console.log('Error checking user existence:', error.message);
+      }
+      
+      let convexUserId = null;
+      
+      // If user doesn't exist, create them
+      if (!userData) {
+        try {
+          const fullName = credential.fullName;
+          const displayName = fullName ? 
+            `${fullName.givenName || ''} ${fullName.familyName || ''}`.trim() :
+            'Apple User';
+          
+          const email = credential.email || `${credential.user}@privaterelay.appleid.com`;
+          convexUserId = await createUser({
+            name: displayName,
+            email: email.toLowerCase(),
+          });
+          console.log('Created new user with ID:', convexUserId);
+        } catch (error) {
+          // If user already exists, we'll get an error due to unique constraint
+          console.log('User might already exist:', error.message);
+          // Try to fetch the user again
+          try {
+            const convex = (await import('@/utils/convex')).default;
+            const email = credential.email || `${credential.user}@privaterelay.appleid.com`;
+            const existingUser = await convex.query(api.users.getUserByEmail, { email: email.toLowerCase() });
+            if (existingUser) {
+              convexUserId = existingUser._id;
+            } else {
+              throw new Error('Failed to create or find user account');
+            }
+          } catch (fetchError) {
+            console.log('Error fetching existing user:', fetchError.message);
+            throw new Error('Failed to create user account');
+          }
+        }
+      } else {
+        convexUserId = userData._id;
       }
       
       const fullName = credential.fullName;
@@ -246,7 +332,7 @@ export const useAuth = () => {
       
       const authData = {
         user: {
-          id: convexUserId || 'mock-user-id', // TODO: Get real user ID from Convex
+          id: convexUserId,
           email: credential.email || `${credential.user}@privaterelay.appleid.com`,
           name: displayName,
           provider: 'apple',
@@ -258,6 +344,16 @@ export const useAuth = () => {
       // Save to secure store
       await SecureStore.setItemAsync(authKey, JSON.stringify(authData));
       setAuth(authData);
+      
+      // Register for push notifications
+      try {
+        const pushToken = await registerForPushNotificationsAsync();
+        if (pushToken && convexUserId) {
+          await savePushTokenToConvex(convexUserId, pushToken);
+        }
+      } catch (pushError) {
+        console.log('Error registering push notifications:', pushError);
+      }
       
       return authData;
     } catch (error) {
@@ -296,36 +392,61 @@ export const useAuth = () => {
         throw new Error('Email, password, and name are required');
       }
 
+      // Check if user already exists
+      try {
+        const convex = (await import('@/utils/convex')).default;
+        const existingUser = await convex.query(api.users.getUserByEmail, { email: userData.email.toLowerCase() });
+        if (existingUser) {
+          throw new Error('An account with this email already exists');
+        }
+      } catch (checkError) {
+        // If there's an error checking, we'll proceed with creation
+        console.log('Error checking existing user:', checkError.message);
+      }
+
       // Create new user in Convex
-      const convexUserId = await createUser({
-        name: userData.name,
-        email: userData.email.toLowerCase(),
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      });
-    
-      const authData = {
-        user: {
-          id: convexUserId, // Use actual Convex ID
-          email: userData.email.toLowerCase(),
+      try {
+        const convexUserId = await createUser({
           name: userData.name,
-          createdAt: new Date().toISOString(),
-        },
-        jwt: 'mock-jwt-token-' + Date.now()
-      };
-    
-      console.log('Sign up successful, auth data:', authData);
-    
-      // Save to secure store
-      await SecureStore.setItemAsync(authKey, JSON.stringify(authData));
-      setAuth(authData);
-    
-      return authData;
+          email: userData.email.toLowerCase(),
+        });
+      
+        const authData = {
+          user: {
+            id: convexUserId,
+            email: userData.email.toLowerCase(),
+            name: userData.name,
+            createdAt: new Date().toISOString(),
+          },
+          jwt: 'mock-jwt-token-' + Date.now()
+        };
+      
+        console.log('Sign up successful, auth data:', authData);
+      
+        // Save to secure store
+        await SecureStore.setItemAsync(authKey, JSON.stringify(authData));
+        setAuth(authData);
+        
+        // Register for push notifications
+        try {
+          const pushToken = await registerForPushNotificationsAsync();
+          if (pushToken && convexUserId) {
+            await savePushTokenToConvex(convexUserId, pushToken);
+          }
+        } catch (pushError) {
+          console.log('Error registering push notifications:', pushError);
+        }
+      
+        return authData;
+      } catch (createError) {
+        console.log('Error creating user:', createError.message);
+        if (createError.message.includes('duplicate')) {
+          throw new Error('An account with this email already exists');
+        }
+        throw new Error('Failed to create account. Please try again.');
+      }
     } catch (error) {
       console.log('Sign up error:', error.message);
-      if (error.message.includes('duplicate')) {
-        throw new Error('An account with this email already exists');
-      }
       throw error;
     }
   }, [setAuth, createUser]);

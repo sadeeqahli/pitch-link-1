@@ -3,6 +3,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect } from 'react';
+import { AppState } from 'react-native';
 // Import Convex provider
 import { ConvexProvider } from "convex/react";
 import convex from '@/utils/convex.ts';

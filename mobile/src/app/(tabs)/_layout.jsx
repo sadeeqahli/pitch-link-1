@@ -1,7 +1,7 @@
 import { Tabs, Redirect } from "expo-router";
-import React, { useState } from "react";
+import React from "react";
 import { useColorScheme } from "react-native";
-import { Home, Search, Calendar, Newspaper, User } from "lucide-react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/utils/auth/useAuth";
 
 export default function TabLayout() {
@@ -19,7 +19,7 @@ export default function TabLayout() {
     return <Redirect href="/auth" />;
   }
 
-  return (
+   return (
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -27,10 +27,8 @@ export default function TabLayout() {
           backgroundColor: isDark ? "#1A1A1A" : "#FFFFFF",
           borderTopWidth: 1,
           borderTopColor: isDark ? "#333333" : "#EAEAEA",
-          paddingTop: 12,
-          paddingBottom: 20,
-          height: 70,
-          paddingHorizontal: 25,
+          paddingTop: 8,
+          height: 90,
         },
         tabBarActiveTintColor: "#00FF88",
         tabBarInactiveTintColor: isDark ? "#9CA3AF" : "#9B9B9B",
@@ -46,21 +44,21 @@ export default function TabLayout() {
         name="home"
         options={{
           title: "Home",
-          tabBarIcon: ({ color, size }) => <Home color={color} size={24} />,
+          tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" color={color} size={24} />,
         }}
       />
       <Tabs.Screen
         name="search"
         options={{
           title: "Search",
-          tabBarIcon: ({ color, size }) => <Search color={color} size={24} />,
+          tabBarIcon: ({ color, size }) => <Ionicons name="search-outline" color={color} size={24} />,
         }}
       />
       <Tabs.Screen
         name="bookings"
         options={{
           title: "My Bookings",
-          tabBarIcon: ({ color, size }) => <Calendar color={color} size={24} />,
+          tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline" color={color} size={24} />,
         }}
       />
       <Tabs.Screen
@@ -68,7 +66,7 @@ export default function TabLayout() {
         options={{
           title: "News",
           tabBarIcon: ({ color, size }) => (
-            <Newspaper color={color} size={24} />
+            <Ionicons name="newspaper-outline" color={color} size={24} />
           ),
         }}
       />
@@ -76,7 +74,7 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: "Profile",
-          tabBarIcon: ({ color, size }) => <User color={color} size={24} />,
+          tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" color={color} size={24} />,
         }}
       />
 
@@ -84,19 +82,19 @@ export default function TabLayout() {
       <Tabs.Screen
         name="pitch/[id]"
         options={{
-          tabBarButton: () => null, // This completely hides the tab
+          href: null,
         }}
       />
       <Tabs.Screen
         name="booking-summary"
         options={{
-          tabBarButton: () => null, // This completely hides the tab
+          href: null,
         }}
       />
       <Tabs.Screen
         name="payment"
         options={{
-          tabBarButton: () => null, // This completely hides the tab
+          href: null,
         }}
       />
     </Tabs>

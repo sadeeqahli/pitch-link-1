@@ -6,7 +6,7 @@ export const createTestUser = mutation({
     const userId = await ctx.db.insert("users", {
       name: "Sadeeqahli",
       email: "hamisuabubakar27@gmail.com",
-      phone: "+2341234567890",
+      phone: "+2349130474356",
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });

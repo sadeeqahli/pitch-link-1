@@ -6,21 +6,23 @@ import type { Id } from "../../convex/_generated/dataModel";
 export const useUsers = () => {
   const createUser = useMutation(api.users.createUser);
   const updateUser = useMutation(api.users.updateUser);
+  const saveUserPushToken = useMutation(api.users.saveUserPushToken);
 
   return {
     createUser,
     updateUser,
+    saveUserPushToken,
   };
-};
-
-// Hook for getting user by email (parameterized query)
-export const useGetUserByEmail = (email: string) => {
-  return useQuery(api.users.getUserByEmail, { email });
 };
 
 // Hook for authenticating user
 export const useAuthenticateUser = (email: string, password: string) => {
   return useQuery(api.users.authenticateUser, { email, password });
+};
+
+// Hook for getting user by email (parameterized query)
+export const useGetUserByEmail = (email: string) => {
+  return useQuery(api.users.getUserByEmail, { email });
 };
 
 // Hook for pitch operations
@@ -38,11 +40,17 @@ export const usePitches = () => {
 
 // Hook for getting a specific pitch by ID (parameterized query)
 export const useGetPitch = (id: Id<"pitches"> | null | undefined) => {
-  // Only call the query if id is provided
-  if (!id) {
-    return useQuery(api.pitches.listPitches); // Return all pitches if no ID
-  }
-  return useQuery(api.pitches.getPitch, { id });
+  // Only call the query if id is provided and valid
+  const result = useQuery(
+    id ? api.pitches.getPitch : (null as any), 
+    id ? { id } : undefined
+  );
+  
+  return { 
+    data: result, 
+    isLoading: result === undefined && id !== null && id !== undefined, 
+    error: result === null && id ? new Error('Pitch not found') : null 
+  };
 };
 
 // Hook for booking operations

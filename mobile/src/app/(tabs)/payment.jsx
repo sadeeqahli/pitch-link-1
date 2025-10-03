@@ -31,6 +31,8 @@ import PayWithFlutterwave from 'flutterwave-react-native';
 import { useAction } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useAuth } from "@/utils/auth/useAuth";
+import { useErrorStore } from "@/utils/errorHandling";
+import { sendBookingConfirmationNotification } from "@/utils/pushNotifications";
 
 export default function PaymentScreen() {
   const insets = useSafeAreaInsets();
@@ -38,9 +40,15 @@ export default function PaymentScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   const { auth } = useAuth();
+  const { addError } = useErrorStore();
 
   const { pitchId, pitchName, date, time, duration, basePricePerHour, price, total } =
     useLocalSearchParams();
+
+  // Ensure numeric values are properly parsed
+  const parsedDuration = duration ? parseInt(duration) : 1;
+  const parsedBasePrice = basePricePerHour ? parseFloat(basePricePerHour) : 0;
+  const parsedTotal = total ? parseFloat(total) : 0;
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("card"); // Default to card payment
@@ -86,11 +94,11 @@ export default function PaymentScreen() {
           pitchId: pitchId,
           date: date,
           startTime: time,
-          duration: parseInt(duration),
-          totalPrice: parseFloat(total),
+          duration: parsedDuration,
+          totalPrice: parsedTotal,
           paymentInfo: {
             transactionId: data.transaction_id || data.tx_ref,
-            amount: parseFloat(total),
+            amount: parsedTotal,
             currency: 'NGN',
             paymentMethod: paymentMethod, // Use selected payment method
             status: 'successful',
@@ -99,6 +107,21 @@ export default function PaymentScreen() {
         });
         
         console.log('Booking and receipt created:', result);
+        
+        // Send push notification for booking confirmation
+        try {
+          // In a real implementation, you would get the user's push token from Convex
+          // For now, we'll just log it
+          console.log('Would send push notification for booking confirmation');
+          // await sendBookingConfirmationNotification(userPushToken, {
+          //   bookingId: result.bookingId,
+          //   pitchName: pitchName,
+          //   date: date,
+          //   time: time,
+          // });
+        } catch (notificationError) {
+          console.log('Error sending push notification:', notificationError);
+        }
         
         Alert.alert(
           "Payment Successful!",
@@ -116,10 +139,12 @@ export default function PaymentScreen() {
         );
       } catch (error) {
         console.error('Error creating booking:', error);
-        Alert.alert("Booking Error", "There was an error creating your booking. Please contact support.");
+        addError('BOOKING', 'There was an error creating your booking. Please contact support.');
       }
     } else if (data.status === 'cancelled') {
       Alert.alert("Payment Cancelled", "Your payment was cancelled.");
+    } else {
+      addError('PAYMENT', 'Payment failed. Please try again.');
     }
   };
 
@@ -132,7 +157,7 @@ export default function PaymentScreen() {
     const flutterwaveOptions = {
       tx_ref: txRef,
       authorization: process.env.EXPO_PUBLIC_FLUTTERWAVE_PUBLIC_KEY,
-      amount: parseFloat(total),
+      amount: parsedTotal,
       currency: 'NGN',
       payment_options: paymentMethod === 'card' ? 'card' : 'banktransfer',
       customer: {
@@ -217,6 +242,8 @@ export default function PaymentScreen() {
             paddingBottom: 140,
           }}
           showsVerticalScrollIndicator={false}
+          scrollEnabled={true}
+          keyboardShouldPersistTaps="handled"
         >
           {/* Security Notice */}
           <View
@@ -489,7 +516,7 @@ export default function PaymentScreen() {
             options={{
               tx_ref: generateTransactionRef(20),
               authorization: process.env.EXPO_PUBLIC_FLUTTERWAVE_PUBLIC_KEY,
-              amount: parseFloat(total),
+              amount: parsedTotal,
               currency: 'NGN',
               payment_options: paymentMethod === 'card' ? 'card' : 'banktransfer',
               customer: {

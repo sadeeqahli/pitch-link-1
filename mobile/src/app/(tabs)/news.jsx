@@ -611,6 +611,8 @@ Would you like to read the full article?`,
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
+        scrollEnabled={true}
+        keyboardShouldPersistTaps="handled"
       >
         {/* Live Streaming Section */}
         {liveMatches && liveMatches.length > 0 && (

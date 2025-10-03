@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   useColorScheme,
   Dimensions,
+  Alert,
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -39,6 +40,7 @@ import {
 import { calculatePricing } from "@/utils/booking/store";
 import { useUserStore } from "@/utils/auth/userStore";
 import { useGetPitch } from "@/hooks/useConvex";
+import { useErrorStore } from "@/utils/errorHandling";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -51,7 +53,9 @@ export default function PitchDetailsScreen() {
   const scrollViewRef = useRef(null);
 
   // Convex hooks
-  const pitchData = useGetPitch(id);
+  const pitchQueryResult = useGetPitch(id);
+  const { data: pitchData, isLoading, error } = pitchQueryResult || {};
+  const { addError } = useErrorStore();
 
   // All hooks must be called before any conditional returns
   const [fontsLoaded] = useFonts({
@@ -67,7 +71,6 @@ export default function PitchDetailsScreen() {
   const [selectedDuration, setSelectedDuration] = useState(1); // Default to 1 hour
   const [availableTimeSlots, setAvailableTimeSlots] = useState([]);
   const [isFirstTimeUser, setIsFirstTimeUser] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [localPitchData, setLocalPitchData] = useState(null);
   
   // Get user booking status
@@ -106,7 +109,7 @@ export default function PitchDetailsScreen() {
           { icon: Shirt, name: "Jerseys", description: "Available for rent" },
           { icon: Users, name: "Changing Rooms", description: "Clean facilities" },
         ],
-        images: pitchData.images || [
+        images: pitchData.images && pitchData.images.length > 0 ? pitchData.images : [
           "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&h=600&fit=crop",
           "https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=800&h=600&fit=crop",
           "https://images.unsplash.com/photo-1459865264687-595d652de67e?w=800&h=600&fit=crop",
@@ -117,15 +120,14 @@ export default function PitchDetailsScreen() {
         },
       };
       setLocalPitchData(transformedPitch);
-      setLoading(false);
     } else if (pitchData === null && id) {
       // Only show error if we have an ID but no data
       console.error("Pitch not found for ID:", id);
-      setLoading(false);
+      addError('BOOKING', 'Pitch not found. Please try another pitch.');
     } else if (pitchData === "undefined") {
-      setLoading(false);
+      // Handle undefined case
     }
-  }, [pitchData, id]);
+  }, [pitchData, id, addError]);
 
   // Memoize time slots generation
   const generateTimeSlots = useCallback(() => {
@@ -158,10 +160,25 @@ export default function PitchDetailsScreen() {
   }
 
   // Show loading state while fetching data
-  if (loading) {
+  if (isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: isDark ? "#0A0A0A" : "#F8F9FA", justifyContent: "center", alignItems: "center" }}>
         <Text style={{ color: isDark ? "#FFFFFF" : "#000000", fontSize: 18 }}>Loading pitch details...</Text>
+      </View>
+    );
+  }
+
+  // Show error state if there's an error
+  if (error) {
+    return (
+      <View style={{ flex: 1, backgroundColor: isDark ? "#0A0A0A" : "#F8F9FA", justifyContent: "center", alignItems: "center" }}>
+        <Text style={{ color: isDark ? "#FFFFFF" : "#000000", fontSize: 18 }}>Error loading pitch: {error.message}</Text>
+        <TouchableOpacity 
+          onPress={() => router.back()}
+          style={{ marginTop: 20, padding: 10, backgroundColor: "#00FF88", borderRadius: 8 }}
+        >
+          <Text style={{ color: "#000000", fontWeight: "bold" }}>Go Back</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -243,7 +260,7 @@ export default function PitchDetailsScreen() {
         });
       } catch (error) {
         console.error("Error creating booking:", error);
-        // Handle error appropriately in UI
+        addError('BOOKING', 'Failed to create booking. Please try again.');
       }
     }
   };
@@ -295,7 +312,7 @@ export default function PitchDetailsScreen() {
     <View style={{ flex: 1, backgroundColor: isDark ? "#0A0A0A" : "#F8F9FA" }}>
       <StatusBar style="light" />
 
-      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} scrollEnabled={true} keyboardShouldPersistTaps="handled">
         {/* Image Carousel */}
         <View style={{ position: "relative", height: 280 }}>
           <ScrollView

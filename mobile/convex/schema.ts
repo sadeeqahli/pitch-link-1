@@ -7,6 +7,7 @@ export default defineSchema({
     name: v.string(),
     email: v.string(),
     phone: v.optional(v.string()),
+    pushToken: v.optional(v.string()), // Add push token field
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_email", ["email"]),

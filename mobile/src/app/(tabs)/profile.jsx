@@ -575,6 +575,54 @@ export default function ProfileScreen() {
       </TouchableOpacity>
 
       <TouchableOpacity
+        onPress={() => router.push("/(tabs)/notifications")}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          paddingVertical: 12,
+          borderBottomWidth: 1,
+          borderBottomColor: isDark ? "#333333" : "#EAEAEA",
+        }}
+      >
+        <Bell size={20} color={isDark ? "#9CA3AF" : "#6B7280"} />
+        <Text
+          style={{
+            fontSize: 16,
+            fontFamily: "Inter_400Regular",
+            color: isDark ? "#FFFFFF" : "#000000",
+            marginLeft: 12,
+            flex: 1,
+          }}
+        >
+          Notifications
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        onPress={() => router.push("/(tabs)/settings")}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          paddingVertical: 12,
+          borderBottomWidth: 1,
+          borderBottomColor: isDark ? "#333333" : "#EAEAEA",
+        }}
+      >
+        <Settings size={20} color={isDark ? "#9CA3AF" : "#6B7280"} />
+        <Text
+          style={{
+            fontSize: 16,
+            fontFamily: "Inter_400Regular",
+            color: isDark ? "#FFFFFF" : "#000000",
+            marginLeft: 12,
+            flex: 1,
+          }}
+        >
+          Settings
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
         style={{
           flexDirection: "row",
           alignItems: "center",

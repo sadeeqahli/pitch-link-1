@@ -6,11 +6,13 @@ import {
   TextInput,
   useColorScheme,
   Alert,
+  useEffect,
+  Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   ArrowLeft,
   CreditCard,
@@ -33,6 +35,7 @@ import { api } from "../../../convex/_generated/api";
 import { useAuth } from "@/utils/auth/useAuth";
 import { useErrorStore } from "@/utils/errorHandling";
 import { sendBookingConfirmationNotification } from "@/utils/pushNotifications";
+import { safeGoBack } from "@/utils/navigation";
 
 export default function PaymentScreen() {
   const insets = useSafeAreaInsets();
@@ -41,6 +44,18 @@ export default function PaymentScreen() {
   const isDark = colorScheme === "dark";
   const { auth } = useAuth();
   const { addError } = useErrorStore();
+
+  // Check if we can go back
+  const canGoBack = router.canGoBack();
+  
+  // Ensure we have a fallback for navigation
+  const safeRouterBack = () => {
+    if (canGoBack) {
+      router.back();
+    } else {
+      router.push("/(tabs)/home");
+    }
+  };
 
   const { pitchId, pitchName, date, time, duration, basePricePerHour, price, total } =
     useLocalSearchParams();
@@ -58,7 +73,7 @@ export default function PaymentScreen() {
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
-    Inter_500Medium,
+    Inter_505Medium,
     Inter_600SemiBold,
     Inter_700Bold,
   });
@@ -150,19 +165,19 @@ export default function PaymentScreen() {
 
   // Simulate payment processing
   const handlePayment = async () => {
-    // Generate transaction reference
-    const txRef = generateTransactionRef(20);
-    
-    // Prepare Flutterwave payment options
-    const flutterwaveOptions = {
-      tx_ref: txRef,
-      authorization: process.env.EXPO_PUBLIC_FLUTTERWAVE_PUBLIC_KEY,
+    // The actual payment is handled by the PayWithFlutterwave component
+    // We don't need to do anything here as the component will automatically
+    // trigger the payment when rendered with the custom button
+    console.log('Payment button pressed, Flutterwave component should handle the flow');
+    console.log('Payment options:', {
+      tx_ref: transactionRef,
+      authorization: process.env.EXPO_PUBLIC_FLUTTERWAVE_PUBLIC_KEY || 'FLWPUBK_TEST-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-X',
       amount: parsedTotal,
       currency: 'NGN',
       payment_options: paymentMethod === 'card' ? 'card' : 'banktransfer',
       customer: {
-        email: auth.user.email,
-        name: auth.user.name,
+        email: auth.user?.email || 'user@example.com',
+        name: auth.user?.name || 'PitchLink User',
         phone_number: '', // Add phone number if available
       },
       customizations: {
@@ -170,21 +185,32 @@ export default function PaymentScreen() {
         description: `Payment for ${pitchName} booking`,
         logo: "https://i.postimg.cc/GHcfV4y7/Pitch-Link-Logo.png",
       },
-    };
+    });
+  };
 
-    // For now, we'll simulate the redirect flow by calling handleOnRedirect directly
-    // In a real implementation, Flutterwave would handle this automatically
-    console.log('Initiating Flutterwave payment with options:', flutterwaveOptions);
+  // Generate a stable transaction reference
+  const transactionRef = useMemo(() => generateTransactionRef(20), []);
+
+  // Log environment variables for debugging
+  useEffect(() => {
+    console.log('Flutterwave Public Key:', process.env.EXPO_PUBLIC_FLUTTERWAVE_PUBLIC_KEY);
+    console.log('Transaction Ref:', transactionRef);
+    console.log('Parsed Total:', parsedTotal);
+  }, [transactionRef, parsedTotal]);
+
+  // Fallback payment handler for testing
+  const handleFallbackPayment = async () => {
+    console.log('Using fallback payment handler');
+    // Simulate a successful payment
+    const fakePaymentData = {
+      status: 'successful',
+      transaction_id: `TEST_${Date.now()}`,
+      tx_ref: transactionRef,
+      amount: parsedTotal,
+    };
     
-    // Simulate successful payment for now
-    setTimeout(() => {
-      handleOnRedirect({
-        status: 'successful',
-        tx_ref: txRef,
-        transaction_id: `FLW-${Date.now()}`,
-        amount: parseFloat(total),
-      });
-    }, 1000);
+    // Call the redirect handler directly to simulate payment success
+    await handleOnRedirect(fakePaymentData);
   };
 
   return (
@@ -212,7 +238,7 @@ export default function PaymentScreen() {
             }}
           >
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={() => safeGoBack(router)}
               style={{
                 padding: 8,
                 marginLeft: -8,
@@ -510,18 +536,45 @@ export default function PaymentScreen() {
             borderTopColor: isDark ? "#333333" : "#EAEAEA",
           }}
         >
+          {/* Fallback Test Button - only shown in development */}
+          {__DEV__ && (
+            <TouchableOpacity
+              onPress={handleFallbackPayment}
+              style={{
+                backgroundColor: "#FF6B00",
+                borderRadius: 16,
+                minHeight: 56,
+                justifyContent: "center",
+                alignItems: "center",
+                flexDirection: "row",
+                width: "100%",
+                marginBottom: 10,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontFamily: "Inter_600SemiBold",
+                  color: "#FFFFFF",
+                }}
+              >
+                Test Payment (Dev Only)
+              </Text>
+            </TouchableOpacity>
+          )}
+          
           {/* Flutterwave Payment Component */}
           <PayWithFlutterwave
             onRedirect={handleOnRedirect}
             options={{
-              tx_ref: generateTransactionRef(20),
-              authorization: process.env.EXPO_PUBLIC_FLUTTERWAVE_PUBLIC_KEY,
+              tx_ref: transactionRef,
+              authorization: process.env.EXPO_PUBLIC_FLUTTERWAVE_PUBLIC_KEY || 'FLWPUBK_TEST-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-X',
               amount: parsedTotal,
               currency: 'NGN',
               payment_options: paymentMethod === 'card' ? 'card' : 'banktransfer',
               customer: {
-                email: auth.user.email,
-                name: auth.user.name,
+                email: auth.user?.email || 'user@example.com',
+                name: auth.user?.name || 'PitchLink User',
                 phone_number: '', // Add phone number if available
               },
               customizations: {
@@ -530,10 +583,11 @@ export default function PaymentScreen() {
                 logo: "https://i.postimg.cc/GHcfV4y7/Pitch-Link-Logo.png",
               },
             }}
-            customButton={() => (
+            customButton={(onPress) => (
               <TouchableOpacity
+                onPress={onPress}
                 style={{
-                  backgroundColor: isProcessing ? "#666" : "#00FF88",
+                  backgroundColor: "#00FF88",
                   borderRadius: 16,
                   minHeight: 56,
                   justifyContent: "center",
@@ -541,35 +595,26 @@ export default function PaymentScreen() {
                   flexDirection: "row",
                   width: "100%",
                 }}
-                disabled={isProcessing}
               >
-                {isProcessing ? (
+                <>
+                  <CreditCard size={20} color="#000000" />
                   <Text
                     style={{
+                      marginLeft: 8,
                       fontSize: 18,
                       fontFamily: "Inter_600SemiBold",
-                      color: "#CCCCCC",
+                      color: "#000000",
                     }}
                   >
-                    Processing...
+                    Confirm and Pay
                   </Text>
-                ) : (
-                  <>
-                    <CreditCard size={20} color="#000000" />
-                    <Text
-                      style={{
-                        marginLeft: 8,
-                        fontSize: 18,
-                        fontFamily: "Inter_600SemiBold",
-                        color: "#000000",
-                      }}
-                    >
-                      Confirm and Pay
-                    </Text>
-                  </>
-                )}
+                </>
               </TouchableOpacity>
             )}
+            onError={(error) => {
+              console.log('Flutterwave error:', error);
+              Alert.alert('Payment Error', 'There was an error processing your payment. Please try again.');
+            }}
           />
         </View>
       </View>

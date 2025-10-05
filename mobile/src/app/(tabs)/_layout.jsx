@@ -1,5 +1,5 @@
 import { Tabs, Redirect } from "expo-router";
-import React from "react";
+import React, { useEffect } from "react";
 import { useColorScheme } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/utils/auth/useAuth";
@@ -93,6 +93,24 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="payment"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="reviews"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="notifications"
         options={{
           href: null,
         }}

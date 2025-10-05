@@ -4,6 +4,7 @@ import {
   ScrollView,
   TouchableOpacity,
   useColorScheme,
+  Platform,
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -28,12 +29,25 @@ import {
 } from "@expo-google-fonts/inter";
 import { calculatePricing } from "@/utils/booking/store";
 import { useUserStore } from "@/utils/auth/userStore";
+import { safeGoBack, safeNavigate } from "@/utils/navigation";
 
 export default function BookingSummaryScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
+
+  // Check if we can go back
+  const canGoBack = router.canGoBack();
+  
+  // Ensure we have a fallback for navigation
+  const safeRouterBack = () => {
+    if (canGoBack) {
+      router.back();
+    } else {
+      router.push("/(tabs)/home");
+    }
+  };
 
   const { 
     pitchId, 
@@ -137,15 +151,27 @@ export default function BookingSummaryScreen() {
   };
 
   const handlePayment = () => {
-    router.push({
+    console.log('Navigating to payment with params:', {
+      pitchId,
+      pitchName,
+      date,
+      time,
+      duration,
+      basePricePerHour,
+      price: formatCurrency(pricing.subtotal),
+      total: pricing.total.toString(),
+    });
+    
+    // Navigate to payment page using safe navigation
+    safeNavigate(router, {
       pathname: "/(tabs)/payment",
       params: {
-        pitchId,
-        pitchName,
-        date,
-        time,
-        duration,
-        basePricePerHour,
+        pitchId: pitchId || '',
+        pitchName: pitchName || '',
+        date: date || '',
+        time: time || '',
+        duration: duration || '1',
+        basePricePerHour: basePricePerHour || '0',
         price: formatCurrency(pricing.subtotal),
         total: pricing.total.toString(),
       },
@@ -177,7 +203,7 @@ export default function BookingSummaryScreen() {
           }}
         >
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => safeGoBack(router)}
             style={{
               padding: 8,
               marginLeft: -8,

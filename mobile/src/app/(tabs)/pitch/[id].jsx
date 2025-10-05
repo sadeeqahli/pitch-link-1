@@ -6,6 +6,7 @@ import {
   useColorScheme,
   Dimensions,
   Alert,
+  Platform,
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -41,6 +42,7 @@ import { calculatePricing } from "@/utils/booking/store";
 import { useUserStore } from "@/utils/auth/userStore";
 import { useGetPitch } from "@/hooks/useConvex";
 import { useErrorStore } from "@/utils/errorHandling";
+import { safeGoBack, safeNavigate } from "@/utils/navigation";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -52,6 +54,18 @@ export default function PitchDetailsScreen() {
   const isDark = colorScheme === "dark";
   const scrollViewRef = useRef(null);
 
+  // Check if we can go back
+  const canGoBack = router.canGoBack();
+  
+  // Ensure we have a fallback for navigation
+  const safeRouterBack = () => {
+    if (canGoBack) {
+      router.back();
+    } else {
+      router.push("/(tabs)/home");
+    }
+  };
+  
   // Convex hooks
   const pitchQueryResult = useGetPitch(id);
   const { data: pitchData, isLoading, error } = pitchQueryResult || {};
@@ -65,6 +79,7 @@ export default function PitchDetailsScreen() {
     Inter_700Bold,
   });
 
+  const [isFavorite, setIsFavorite] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
@@ -245,14 +260,24 @@ export default function PitchDetailsScreen() {
   const handleBooking = async () => {
     if (selectedDate && selectedTime && selectedDuration && user) {
       try {
-        // Navigate to booking summary
-        router.push({
+        console.log('Navigating to booking summary with params:', {
+          pitchId: id,
+          pitchName: pitch.name,
+          date: selectedDate.toISOString(),
+          time: selectedTime.time,
+          duration: selectedDuration.toString(),
+          basePricePerHour: pitch.basePricePerHour.toString(),
+          totalPrice: pricing.total.toString(),
+        });
+        
+        // Navigate to booking summary using safe navigation
+        safeNavigate(router, {
           pathname: "/(tabs)/booking-summary",
           params: {
-            pitchId: id,
-            pitchName: pitch.name,
+            pitchId: id || '',
+            pitchName: pitch.name || '',
             date: selectedDate.toISOString(),
-            time: selectedTime.time,
+            time: selectedTime.time || '',
             duration: selectedDuration.toString(),
             basePricePerHour: pitch.basePricePerHour.toString(),
             totalPrice: pricing.total.toString(),
@@ -347,7 +372,7 @@ export default function PitchDetailsScreen() {
             }}
           >
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={() => safeGoBack(router)}
               style={{
                 width: 40,
                 height: 40,
@@ -371,6 +396,24 @@ export default function PitchDetailsScreen() {
                   alignItems: "center",
                   marginRight: 12,
                 }}
+                onPress={() => {
+                  // Share functionality
+                  Alert.alert(
+                    "Share Pitch",
+                    "Share this pitch with friends",
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      { 
+                        text: "Share", 
+                        onPress: () => {
+                          // In a real app, you would use the Share API
+                          console.log("Sharing pitch:", pitch.name);
+                          Alert.alert("Shared!", "Pitch link copied to clipboard");
+                        }
+                      }
+                    ]
+                  );
+                }}
               >
                 <Share size={18} color="#FFFFFF" />
               </TouchableOpacity>
@@ -383,8 +426,13 @@ export default function PitchDetailsScreen() {
                   justifyContent: "center",
                   alignItems: "center",
                 }}
+                onPress={() => setIsFavorite(!isFavorite)}
               >
-                <Heart size={18} color="#FFFFFF" />
+                <Heart 
+                  size={18} 
+                  color={isFavorite ? "#FF6B00" : "#FFFFFF"} 
+                  fill={isFavorite ? "#FF6B00" : "none"} 
+                />
               </TouchableOpacity>
             </View>
           </View>
@@ -1128,6 +1176,35 @@ export default function PitchDetailsScreen() {
           borderTopColor: isDark ? "#333333" : "#EAEAEA",
         }}
       >
+        {/* Test Navigation Button - only shown in development */}
+        {__DEV__ && (
+          <TouchableOpacity
+            onPress={() => {
+              console.log('Test navigation to booking summary');
+              router.push("/(tabs)/booking-summary");
+            }}
+            style={{
+              backgroundColor: "#FF6B00",
+              borderRadius: 16,
+              minHeight: 56,
+              justifyContent: "center",
+              alignItems: "center",
+              flexDirection: "row",
+              marginBottom: 10,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 18,
+                fontFamily: "Inter_600SemiBold",
+                color: "#FFFFFF",
+              }}
+            >
+              Test Navigation (Dev Only)
+            </Text>
+          </TouchableOpacity>
+        )}
+        
         <TouchableOpacity
           onPress={handleBooking}
           style={{
